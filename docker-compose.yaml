@@ -104,7 +104,7 @@ services:
 
   java-backend:
     build:
-      context: ./extension-backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: rag-java-backend
     restart: unless-stopped
