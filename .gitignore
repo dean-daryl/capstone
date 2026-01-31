@@ -1,0 +1,46 @@
+cat > somatek/.gitignore << 'EOF'
+# Data directories (contains large files and sensitive data)
+data/
+logs/
+
+# Docker volumes and cache
+docker-compose.override.yml
+.docker/
+
+# Environment files with secrets
+.env
+.env.local
+.env.production
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Application logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary directories
+tmp/
+temp/
+EOF
