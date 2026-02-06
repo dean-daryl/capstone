@@ -81,7 +81,9 @@ public class RecentActivityService implements IRecentActivityService{
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(llamaApiKey);
+        if (llamaApiKey != null && !llamaApiKey.equals("ollama")) {
+            headers.setBearerAuth(llamaApiKey);
+        }
 
         HttpEntity<LlamaRequestDto> requestEntity = new HttpEntity<>(request, headers);
 
