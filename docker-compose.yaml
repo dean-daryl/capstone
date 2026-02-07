@@ -96,7 +96,25 @@ services:
         ollama serve &
         sleep 10
         ollama pull qwen2.5:3b
+        ollama pull nomic-embed-text
         wait
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.1
+    container_name: rag-qdrant
+    restart: unless-stopped
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333 && echo -e \"GET /healthz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && cat <&3 | grep -q 200'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rag-network
 
   # =====================================
   # BACKEND LAYER
@@ -112,6 +130,8 @@ services:
       postgres:
         condition: service_healthy
       mongodb:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=production
@@ -149,3 +169,4 @@ volumes:
   ollama-data:
   models-data:
   mongodb-data:
+  qdrant-data:
