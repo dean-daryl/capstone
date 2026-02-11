@@ -46,7 +46,7 @@ public class RagConfig {
             Based on the document context above, answer the following question thoroughly.
             If the context contains relevant information, use it to provide a complete answer.
 
-            Question: {question}
+            Question: {query}
             Answer:""";
 
     @Bean

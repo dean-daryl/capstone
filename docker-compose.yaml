@@ -74,6 +74,8 @@ services:
     image: ollama/ollama:latest
     container_name: rag-ollama
     restart: unless-stopped
+    environment:
+      - OLLAMA_ORIGINS=*
     volumes:
       - ./data/ollama:/root/.ollama
     ports:

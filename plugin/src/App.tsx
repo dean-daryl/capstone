@@ -1,10 +1,57 @@
 import React, { useEffect, useState } from "react";
-import Groq from "groq-sdk";
+import * as Tabs from "@radix-ui/react-tabs";
 import { Header } from "./components/Header";
 import { TimestampModal } from "./components/TimestampModal";
+import { SourceCard } from "./components/SourceCard";
 import { Card, CardContent } from "../src/components/ui/card";
-import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./components/ui/dialog";
+import { Loader2, FileText } from "lucide-react";
 import { cn } from "../src/lib/util";
+
+const OLLAMA_BASE_URL = "http://localhost:11434";
+const OLLAMA_MODEL = "qwen2.5:3b";
+
+async function ollamaChat(prompt: string): Promise<string> {
+  const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: OLLAMA_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      stream: false,
+    }),
+  });
+  const data = await res.json();
+  return data.message.content;
+}
+
+interface SourceChunk {
+  documentId: string;
+  filename: string;
+  chunkText: string;
+  score: number;
+}
+
+interface RagResponse {
+  answer: string;
+  sources: SourceChunk[];
+}
+
+async function ragQuery(question: string): Promise<RagResponse> {
+  const res = await fetch("http://localhost:8080/rag/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  const data = await res.json();
+  return data as RagResponse;
+}
 
 const App: React.FC = () => {
   const [text, setResult] = useState("");
@@ -14,14 +61,14 @@ const App: React.FC = () => {
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [videoSource, setVideoSource] = useState("");
   const [_imagePath, setImagePath] = useState("")
-
+  const [activeTab, setActiveTab] = useState<"simplify" | "search">("simplify");
+  const [ragAnswer, setRagAnswer] = useState("");
+  const [ragSources, setRagSources] = useState<SourceChunk[]>([]);
+  const [isRagLoading, setIsRagLoading] = useState(false);
+  const [ragError, setRagError] = useState("");
+  const [selectedSource, setSelectedSource] = useState<SourceChunk | null>(null);
 
   const GROK_API_KEY = process.env.REACT_APP_GROQ_API_KEY;
-
-  const groq = new Groq({
-    apiKey: GROK_API_KEY,
-    dangerouslyAllowBrowser: true,
-  });
   const markdownToPlainText = (text: string): string => {
     return text
       .replace(/\*\*(.+?)\*\*/g, '$1') // Remove ** for bold text
@@ -38,37 +85,14 @@ const App: React.FC = () => {
           (async() => {
             setIsLoading(true);
             try {
-              const chatCompletion = await groq.chat.completions.create({
-                "messages": [
-                  {
-                    "role": "user",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "Explain the meaning of what is in this image in simple terms as a teacher would do. Translate it into very basic English suitable for someone below B1 proficiency level. Only provide the answer without additional context or introductory phrases."
-                      },
-                      {
-                        "type": "image_url",
-                        "image_url": {
-                          "url": message.url
-                        }
-                      }
-                    ]
-                  }
-                ],
-                "model": "llama-3.2-11b-vision-preview",
-                "temperature": 1,
-                "max_tokens": 1024,
-                "top_p": 1,
-                "stream": false,
-                "stop": null
-              });
-              const response = chatCompletion.choices[0].message.content as string;
+              const response = await ollamaChat(
+                `The user is looking at an image from this URL: ${message.url}. Explain what this image likely contains in simple terms as a teacher would do. Translate it into very basic English suitable for someone below B1 proficiency level. Only provide the answer without additional context or introductory phrases.`
+              );
               setResultSimple(markdownToPlainText(response));
               (async() => {
-                 await fetch(`http:localhost:8080/technology?text=${encodeURIComponent(response)}`, {method: 'POST'})
+                 await fetch(`http://localhost:8080/technology?text=${encodeURIComponent(response)}`, {method: 'POST'})
 
-                 await fetch(`http:localhost:8080/recent-activity`, {
+                 await fetch(`http://localhost:8080/recent-activity`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -121,25 +145,18 @@ const App: React.FC = () => {
       );
     });
 
-    async function getGroqChatCompletion() {
+    async function getOllamaChatCompletion() {
       setIsLoading(true);
       try {
-        const results = await groq.chat.completions.create({
-          messages: [
-            {
-              role: "user",
-              content: `Explain the meaning of "${text}" in simple terms. Translate it into basic English suitable for someone below A2 proficiency level. Only provide the answer without additional context or introductory phrases.`,
-            },
-          ],
-          model: "llama3-70b-8192",
-        });
-        const response = results.choices[0].message.content as string;
+        const response = await ollamaChat(
+          `Explain the meaning of "${text}" in simple terms. Translate it into basic English suitable for someone below A2 proficiency level. Only provide the answer without additional context or introductory phrases.`
+        );
         setResultSimple(response);
-        await fetch(`http:localhost:8080/technology?text=${encodeURIComponent(text)}`, {
+        await fetch(`http://localhost:8080/technology?text=${encodeURIComponent(text)}`, {
           method: 'POST',
         });
 
-          await fetch(`http:localhost:8080/recent-activity`, {
+          await fetch(`http://localhost:8080/recent-activity`, {
            method: 'POST',
            headers: {
              'Content-Type': 'application/json',
@@ -196,7 +213,25 @@ const App: React.FC = () => {
       );
     });
 
-    if (text.trim().length > 3) getGroqChatCompletion();
+    async function performRagSearch() {
+      setIsRagLoading(true);
+      setRagError("");
+      try {
+        const result = await ragQuery(text);
+        setRagAnswer(result.answer);
+        setRagSources(result.sources ?? []);
+      } catch (error) {
+        console.error("RAG error:", error);
+        setRagError("Failed to search documents. Is the backend running?");
+      } finally {
+        setIsRagLoading(false);
+      }
+    }
+
+    if (text.trim().length > 3) {
+      getOllamaChatCompletion();
+      performRagSearch();
+    }
   }, [text]);
 
   const handleConfirmTimestamps = (start: number, end: number) => {
@@ -294,17 +329,10 @@ const App: React.FC = () => {
 
       const transcriptionResult = await response.json();
       if (transcriptionResult.text) {
-        const transcriptions = await groq.chat.completions.create({
-          messages: [
-            {
-              role: "user",
-              content: `Explain the meaning of "${transcriptionResult.text}" in simple terms. Translate it into basic English suitable for someone below A2 proficiency level. Only provide the answer without additional context or introductory phrases. Note that its video transcription where accents can often be misleading try to be creative in case of any ambiguity. Feel free to correct mistakes in the transcription. For example technology names or any other jargon. Eliminate any unnecessary words like Here's an explanation and stuff.`,
-            },
-          ],
-          model: "llama3-70b-8192",
-        });
-        const response = transcriptions.choices[0].message.content as string;
-        setResultSimple(response);
+        const simplifiedResponse = await ollamaChat(
+          `Explain the meaning of "${transcriptionResult.text}" in simple terms. Translate it into basic English suitable for someone below A2 proficiency level. Only provide the answer without additional context or introductory phrases. Note that its video transcription where accents can often be misleading try to be creative in case of any ambiguity. Feel free to correct mistakes in the transcription. For example technology names or any other jargon. Eliminate any unnecessary words like Here's an explanation and stuff.`
+        );
+        setResultSimple(simplifiedResponse);
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 
@@ -312,28 +340,28 @@ const App: React.FC = () => {
           const match = tabUrl.match(/[?&]v=([^&]+)/);
           const videoId = match ? match[1] : null;
 
-          (async() => { 
-            await fetch(`http:localhost:8080/technology?text=${encodeURIComponent(response)}`, {method: 'POST'})
-  
-            await fetch(`http:localhost:8080/recent-activity`, {
+          (async() => {
+            await fetch(`http://localhost:8080/technology?text=${encodeURIComponent(simplifiedResponse)}`, {method: 'POST'})
+
+            await fetch(`http://localhost:8080/recent-activity`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   "title":`${transcriptionResult.text}`
                 },
                 body: JSON.stringify({
-                  userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6", 
+                  userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6",
                   conversationType:"VIDEO",
                   conversation: {
-                    "prompt 1": `<iframe 
+                    "prompt 1": `<iframe
                                   src="https://www.youtube.com/embed/${videoId}"
-                                  width="560" 
-                                  height="315" 
-                                  frameborder="0" 
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                  width="560"
+                                  height="315"
+                                  frameborder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                   allowfullscreen
-                                ></iframe>`, 
-                    "response 1": response, 
+                                ></iframe>`,
+                    "response 1": simplifiedResponse,
                   }
                 })
               });
@@ -356,30 +384,112 @@ const App: React.FC = () => {
       <Header />
       
       <main className="p-4 space-y-4">
-        <Card className={cn(
-          "transition-all duration-300",
-          isLoading ? "opacity-50" : "opacity-100"
-        )}>
-          <CardContent className="pt-6">
-            {( simplifiedText) ? (
-              <p className="text-[15px] leading-relaxed">{simplifiedText}</p>
-            ) : (
-              <div className="flex items-center justify-center py-8">
-                {isLoading ? (
-                  <div className="flex flex-col items-center gap-2">
+        <Tabs.Root value={activeTab} onValueChange={(v) => setActiveTab(v as "simplify" | "search")}>
+          <Tabs.List className="flex border-b mb-4">
+            <Tabs.Trigger
+              value="simplify"
+              className="flex-1 py-2 text-sm font-medium text-center transition-colors data-[state=active]:border-b-2 data-[state=active]:border-purple-600 data-[state=active]:text-purple-600 text-muted-foreground hover:text-foreground"
+            >
+              Simplify
+            </Tabs.Trigger>
+            <Tabs.Trigger
+              value="search"
+              className="flex-1 py-2 text-sm font-medium text-center transition-colors data-[state=active]:border-b-2 data-[state=active]:border-purple-600 data-[state=active]:text-purple-600 text-muted-foreground hover:text-foreground"
+            >
+              Search Documents
+            </Tabs.Trigger>
+          </Tabs.List>
+
+          <Tabs.Content value="simplify">
+            <Card className={cn(
+              "transition-all duration-300",
+              isLoading ? "opacity-50" : "opacity-100"
+            )}>
+              <CardContent className="pt-6">
+                {simplifiedText ? (
+                  <p className="text-[15px] leading-relaxed">{simplifiedText}</p>
+                ) : (
+                  <div className="flex items-center justify-center py-8">
+                    {isLoading ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Processing...</p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Select text or a video segment to simplify
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </Tabs.Content>
+
+          <Tabs.Content value="search">
+            <Card className={cn(
+              "transition-all duration-300",
+              isRagLoading ? "opacity-50" : "opacity-100"
+            )}>
+              <CardContent className="pt-6">
+                {isRagLoading ? (
+                  <div className="flex flex-col items-center gap-2 py-8">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Processing...</p>
+                    <p className="text-sm text-muted-foreground">Searching documents...</p>
+                  </div>
+                ) : ragError ? (
+                  <p className="text-sm text-red-500">{ragError}</p>
+                ) : ragAnswer ? (
+                  <div className="space-y-4">
+                    <p className="text-[15px] leading-relaxed">{ragAnswer}</p>
+                    {ragSources.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sources</p>
+                        <div className="flex flex-wrap gap-2">
+                          {ragSources.map((source, i) => (
+                            <SourceCard
+                              key={`${source.documentId}-${i}`}
+                              filename={source.filename}
+                              score={source.score}
+                              onClick={() => setSelectedSource(source)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Select text or a video segment to simplify
-                  </p>
+                  <div className="flex flex-col items-center gap-2 py-8">
+                    <FileText className="w-8 h-8 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Select text to search your uploaded documents
+                    </p>
+                  </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </Tabs.Content>
+        </Tabs.Root>
       </main>
+
+      <Dialog open={!!selectedSource} onOpenChange={(open) => { if (!open) setSelectedSource(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              {selectedSource?.filename}
+            </DialogTitle>
+            <DialogDescription>
+              Relevance: {selectedSource ? Math.round(selectedSource.score * 100) : 0}%
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[300px] overflow-y-auto">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {selectedSource?.chunkText}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {showModal && (
         <TimestampModal
