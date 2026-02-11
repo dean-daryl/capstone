@@ -19,5 +19,9 @@
       "128": "icons/icon16.png"
     }
   },
-  "permissions": ["contextMenus", "activeTab", "tabs", "scripting","tabCapture"]
+  "permissions": ["contextMenus", "activeTab", "tabs", "scripting", "tabCapture"],
+  "host_permissions": ["<all_urls>"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:8080 https://api.groq.com"
+  }
 }
