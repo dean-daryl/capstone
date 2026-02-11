@@ -15,9 +15,11 @@ import { Loader2, FileText } from "lucide-react";
 import { cn } from "../src/lib/util";
 
 const OLLAMA_BASE_URL = "http://localhost:11434";
-const OLLAMA_MODEL = "qwen2.5:3b";
+const OLLAMA_MODEL = "qwen2.5:1.5b";
 
 async function ollamaChat(prompt: string): Promise<string> {
+  const start = performance.now();
+  console.log(`[Ollama] Request started`);
   const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -28,6 +30,8 @@ async function ollamaChat(prompt: string): Promise<string> {
     }),
   });
   const data = await res.json();
+  const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+  console.log(`[Ollama] Response received in ${elapsed}s:`, data.message.content.substring(0, 100));
   return data.message.content;
 }
 
@@ -44,13 +48,17 @@ interface RagResponse {
 }
 
 async function ragQuery(question: string): Promise<RagResponse> {
+  const start = performance.now();
+  console.log(`[RAG] Query started: "${question.substring(0, 80)}"`);
   const res = await fetch("http://localhost:8080/rag/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question }),
   });
   const data = await res.json();
-  return data as RagResponse;
+  const elapsed = ((performance.now() - start) / 1000).toFixed(1);
+  console.log(`[RAG] Response received in ${elapsed}s:`, data);
+  return data.data as RagResponse;
 }
 
 const App: React.FC = () => {

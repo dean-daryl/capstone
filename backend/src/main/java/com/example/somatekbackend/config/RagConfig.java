@@ -14,16 +14,16 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RagConfig {
 
-    @Value("${rag.chunk.size:300}")
+    @Value("${rag.chunk.size:200}")
     private int chunkSize;
 
-    @Value("${rag.chunk.overlap:50}")
+    @Value("${rag.chunk.overlap:30}")
     private int chunkOverlap;
 
-    @Value("${rag.search.top-k:8}")
+    @Value("${rag.search.top-k:3}")
     private int topK;
 
-    @Value("${rag.search.similarity-threshold:0.3}")
+    @Value("${rag.search.similarity-threshold:0.5}")
     private double similarityThreshold;
 
     private static final String SYSTEM_PROMPT = """
