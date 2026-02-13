@@ -1,0 +1,46 @@
+import logging
+import re
+
+import spacy
+
+logger = logging.getLogger(__name__)
+
+_nlp = None
+
+
+def load_model(model_path: str = "/app/model") -> None:
+    global _nlp
+    logger.info("Loading spaCy model from %s ...", model_path)
+    _nlp = spacy.load(model_path)
+    logger.info("Model loaded. Labels: %s", get_labels())
+
+
+def get_nlp():
+    if _nlp is None:
+        raise RuntimeError("Model not loaded. Call load_model() first.")
+    return _nlp
+
+
+def get_labels() -> list[str]:
+    return list(get_nlp().get_pipe("textcat_multilabel").labels)
+
+
+def normalize_label(raw_label: str) -> str:
+    """Normalize label from |calculus|integration| to calculus > integration."""
+    stripped = raw_label.strip("|")
+    parts = [p.replace("-", " ") for p in stripped.split("|")]
+    return " > ".join(parts)
+
+
+def classify(text: str, threshold: float = 0.5) -> list[dict]:
+    nlp = get_nlp()
+    doc = nlp(text)
+    results = []
+    for label, score in doc.cats.items():
+        if score >= threshold:
+            results.append({
+                "label": normalize_label(label),
+                "score": round(score, 4),
+            })
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results

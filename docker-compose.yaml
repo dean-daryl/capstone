@@ -119,6 +119,29 @@ services:
     networks:
       - rag-network
 
+  textcat:
+    build:
+      context: ./services/textcat
+      dockerfile: Dockerfile
+    container_name: rag-textcat
+    restart: unless-stopped
+    volumes:
+      - ./models/textCat:/app/model:ro
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    networks:
+      - rag-network
+
   # =====================================
   # BACKEND LAYER
   # =====================================
@@ -138,6 +161,8 @@ services:
         condition: service_healthy
       ollama:
         condition: service_healthy
+      textcat:
+        condition: service_healthy
     environment:
       - SPRING_PROFILES_ACTIVE=production
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rag_db}
@@ -148,6 +173,7 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
+      - TEXTCAT_SERVICE_URL=http://textcat:8000
     ports:
       - "8080:8080"
     volumes:
