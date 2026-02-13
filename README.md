@@ -2,6 +2,9 @@
 
 An AI-powered learning platform that simplifies complex technical content (text, images, and videos) into beginner-friendly explanations. It combines a Chrome browser extension, a web analytics dashboard, and a suite of backend services including RAG (Retrieval-Augmented Generation), text classification, and local LLM inference.
 
+
+## Demo Video
+https://www.loom.com/share/a409c52423df436daca190bf8c2c34ac
 ## Tech Stack
 
 | Component | Technology | Language |
