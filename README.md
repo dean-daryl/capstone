@@ -232,3 +232,10 @@ somatek/
 ├── docker-compose.yaml
 └── .gitignore
 ```
+## Screenshots of prototype
+
+<img width="1496" height="338" alt="Screenshot 2026-02-13 at 07 07 17" src="https://github.com/user-attachments/assets/2b9a3ca5-81d4-40d9-a2c4-063eed22dac6" />
+<img width="1518" height="1067" alt="Screenshot 2026-02-13 at 07 07 35" src="https://github.com/user-attachments/assets/bc3e61d1-e342-49dd-b7ad-497c01a7d809" />
+
+
+
