@@ -3,6 +3,9 @@ cat > somatek/.gitignore << 'EOF'
 data/
 logs/
 
+# ML model files (too large for git)
+models/
+
 # Docker volumes and cache
 docker-compose.override.yml
 .docker/
