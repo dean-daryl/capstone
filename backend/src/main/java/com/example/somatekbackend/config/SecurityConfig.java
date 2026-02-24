@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/recent-activity/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/recent-activity/**").permitAll()
                         .requestMatchers("/rag/**").permitAll()
+                        .requestMatchers("/stats/**").permitAll()
                         .anyRequest().authenticated())
                 .authenticationManager(authenticationManager)
                 .build();

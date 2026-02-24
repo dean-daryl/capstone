@@ -18,4 +18,6 @@ public interface IDocumentService {
     RagDocument getDocumentById(String id);
 
     void deleteDocument(String id);
+
+    String getDocumentViewUrl(String id);
 }

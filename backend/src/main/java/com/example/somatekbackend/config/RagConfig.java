@@ -4,15 +4,26 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.ollama.api.OllamaApi;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 @Configuration
 public class RagConfig {
+
+    @Value("${spring.ai.ollama.base-url:http://localhost:11434}")
+    private String ollamaBaseUrl;
+
+    @Value("${ollama.read-timeout-minutes:10}")
+    private int ollamaReadTimeoutMinutes;
 
     @Value("${rag.chunk.size:200}")
     private int chunkSize;
@@ -27,27 +38,35 @@ public class RagConfig {
     private double similarityThreshold;
 
     private static final String SYSTEM_PROMPT = """
-            You are a helpful assistant that answers questions based on the provided document context.
-            Use the following retrieved document chunks to answer the user's question.
-            Synthesize information from multiple chunks when needed.
-            If the user asks about a person, project, or topic mentioned in the documents, \
-            provide all relevant details you can find in the context.
-            If the context truly contains no relevant information, say so clearly.
-            Always be thorough - combine details from different sections of the documents.
+            You are a helpful assistant that explains technical documents in simple English.
+            Always respond in English. Translate any non-English text to English.
+            Explain concepts in your own words — never copy text verbatim.
+            Only use information from the provided context. If no relevant context exists, say so.
             """;
 
     private static final String ADVISOR_PROMPT_TEMPLATE = """
 
-            ---------------------
-            DOCUMENT CONTEXT:
+            Context from documents:
             {question_answer_context}
-            ---------------------
 
-            Based on the document context above, answer the following question thoroughly.
-            If the context contains relevant information, use it to provide a complete answer.
+            User question: {query}
 
-            Question: {query}
-            Answer:""";
+            Explain the answer in simple, clear English:""";
+
+    @Bean
+    public OllamaApi ollamaApi() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(30));
+        requestFactory.setReadTimeout(Duration.ofMinutes(ollamaReadTimeoutMinutes));
+
+        RestClient.Builder restClientBuilder = RestClient.builder()
+                .requestFactory(requestFactory);
+
+        return OllamaApi.builder()
+                .baseUrl(ollamaBaseUrl)
+                .restClientBuilder(restClientBuilder)
+                .build();
+    }
 
     @Bean
     public TokenTextSplitter tokenTextSplitter() {

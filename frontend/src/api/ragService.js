@@ -1,0 +1,30 @@
+import apiClient from "./apiClient";
+
+export const queryDocuments = async (question) => {
+  const response = await apiClient.post("/rag/query", { question });
+  return response.data;
+};
+
+export const uploadDocument = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await apiClient.post("/rag/documents", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
+export const getDocuments = async () => {
+  const response = await apiClient.get("/rag/documents");
+  return response.data;
+};
+
+export const getDocumentViewUrl = async (id) => {
+  const response = await apiClient.get(`/rag/documents/${id}/view`);
+  return response.data;
+};
+
+export const deleteDocument = async (id) => {
+  const response = await apiClient.delete(`/rag/documents/${id}`);
+  return response.data;
+};
