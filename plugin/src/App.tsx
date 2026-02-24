@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./components/ui/dialog";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, ExternalLink } from "lucide-react";
 import { cn } from "../src/lib/util";
 
 const OLLAMA_BASE_URL = "http://localhost:11434";
@@ -40,6 +40,7 @@ interface SourceChunk {
   filename: string;
   chunkText: string;
   score: number;
+  documentUrl?: string;
 }
 
 interface RagResponse {
@@ -459,6 +460,7 @@ const App: React.FC = () => {
                               key={`${source.documentId}-${i}`}
                               filename={source.filename}
                               score={source.score}
+                              documentUrl={source.documentUrl}
                               onClick={() => setSelectedSource(source)}
                             />
                           ))}
@@ -496,6 +498,19 @@ const App: React.FC = () => {
               {selectedSource?.chunkText}
             </p>
           </div>
+          {selectedSource?.documentUrl && (
+            <div className="pt-4 border-t">
+              <a
+                href={selectedSource.documentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 hover:underline"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open full document
+              </a>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

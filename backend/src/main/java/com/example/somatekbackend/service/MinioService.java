@@ -36,6 +36,7 @@ public class MinioService implements IMinioService {
     public void uploadFile(String objectName, MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
             ensureBucketExists();
+            setBucketPolicyPublic();
             minioClient.putObject(PutObjectArgs.builder()
                     .bucket(bucketName)
                     .object(objectName)
@@ -57,15 +58,40 @@ public class MinioService implements IMinioService {
         }
     }
 
+    private void setBucketPolicyPublic() throws Exception {
+        String policyJson = "{\n" +
+                "  \"Version\": \"2012-10-17\",\n" +
+                "  \"Statement\": [\n" +
+                "    {\n" +
+                "      \"Effect\": \"Allow\",\n" +
+                "      \"Principal\": \"*\",\n" +
+                "      \"Action\": [\"s3:GetObject\"],\n" +
+                "      \"Resource\": [\"arn:aws:s3:::" + bucketName + "/*\"]\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}";
+        minioClient.setBucketPolicy(SetBucketPolicyArgs.builder()
+                .bucket(bucketName)
+                .config(policyJson)
+                .build());
+        logger.info("Set bucket policy to public read: {}", bucketName);
+    }
+
     @Override
     public String getPresignedUrl(String objectName) {
         try {
+            // First check if object exists
+            if (!objectExists(objectName)) {
+                throw new RuntimeException("Object not found: " + objectName);
+            }
+
+            // Use maximum expiry (7 days = 604800 seconds) for near-permanent access
             String url = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
                             .bucket(bucketName)
                             .object(objectName)
-                            .expiry(60, TimeUnit.MINUTES)
+                            .expiry(7, TimeUnit.DAYS)
                             .build());
 
             // Replace internal Docker hostname with the browser-accessible public URL
@@ -74,9 +100,25 @@ public class MinioService implements IMinioService {
             }
 
             return url;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            logger.error("Failed to generate presigned URL for: {}", objectName, e);
             throw new RuntimeException("Failed to generate presigned URL: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Check if an object exists in the bucket
+     */
+    public boolean objectExists(String objectName) {
+        try {
+            minioClient.statObject(StatObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(objectName)
+                    .build());
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 

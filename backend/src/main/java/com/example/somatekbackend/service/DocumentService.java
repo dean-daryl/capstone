@@ -178,7 +178,10 @@ public class DocumentService implements IDocumentService {
                 try {
                     RagDocument ragDoc = ragDocumentRepository.findById(documentId).orElse(null);
                     if (ragDoc != null && ragDoc.getMinioObjectName() != null) {
-                        source.setDocumentUrl(minioService.getPresignedUrl(ragDoc.getMinioObjectName()));
+                        // Check if object exists in MinIO before generating URL
+                        if (minioService.objectExists(ragDoc.getMinioObjectName())) {
+                            source.setDocumentUrl(minioService.getPresignedUrl(ragDoc.getMinioObjectName()));
+                        }
                     }
                 } catch (Exception e) {
                     logger.warn("Could not generate presigned URL for document {}: {}", documentId, e.getMessage());
@@ -229,6 +232,9 @@ public class DocumentService implements IDocumentService {
         RagDocument ragDocument = getDocumentById(id);
         if (ragDocument.getMinioObjectName() == null) {
             throw new RuntimeException("Document has no stored file: " + id);
+        }
+        if (!minioService.objectExists(ragDocument.getMinioObjectName())) {
+            throw new RuntimeException("Document file not found in storage: " + ragDocument.getFilename());
         }
         return minioService.getPresignedUrl(ragDocument.getMinioObjectName());
     }

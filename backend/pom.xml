@@ -154,6 +154,10 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <environmentVariables>
+                        <!-- Load environment variables from .env.dev file -->
+                        <SPRING_PROFILES_ACTIVE>dev</SPRING_PROFILES_ACTIVE>
+                    </environmentVariables>
                 </configuration>
             </plugin>
         </plugins>
