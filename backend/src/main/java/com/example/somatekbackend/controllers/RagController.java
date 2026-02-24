@@ -59,6 +59,16 @@ public class RagController {
         }
     }
 
+    @GetMapping("/documents/{id}/view")
+    public ResponseEntity<ResponseObjectDto> getDocumentViewUrl(@PathVariable String id) {
+        try {
+            String url = documentService.getDocumentViewUrl(id);
+            return ResponseEntity.ok(new ResponseObjectDto(java.util.Map.of("url", url)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ResponseObjectDto(e));
+        }
+    }
+
     @DeleteMapping("/documents/{id}")
     public ResponseEntity<ResponseObjectDto> deleteDocument(@PathVariable String id) {
         try {

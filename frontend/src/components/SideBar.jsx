@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Bot, CircleUserRound, PanelRightClose, Settings, User, X } from "lucide-react";
+import { Bot, CircleUserRound, LayoutDashboard, MessageSquare, PanelRightClose, Settings, User, X } from "lucide-react";
 import RecentActivities from "./recent-activity/RecentActivities.jsx";
 import sidebar from "../../public/assets/sidebar.svg";
 
@@ -41,7 +41,17 @@ function SideBar({ isOpen, setIsOpen }) {
                 />
               </div>
               <div className="py-4 px-4 bg-gray-900">
-                {role === "STUDENT" ? <RecentActivities /> : 
+                <div className="py-2 space-y-1">
+                  <Link to="/dashboard" className="flex items-center py-2 px-4 hover:bg-gray-800 rounded-md">
+                    <LayoutDashboard className="w-5 h-5 text-gray-400 mr-3" />
+                    <span className="text-sm font-medium text-gray-100">Dashboard</span>
+                  </Link>
+                  <Link to="/dashboard/query" className="flex items-center py-2 px-4 hover:bg-gray-800 rounded-md">
+                    <MessageSquare className="w-5 h-5 text-gray-400 mr-3" />
+                    <span className="text-sm font-medium text-gray-100">Ask AI</span>
+                  </Link>
+                </div>
+                {role === "STUDENT" ? <RecentActivities /> :
                 <div className="py-4">
                   <Link to="/users" className="flex items-center py-2 px-4 hover:bg-gray-800 rounded-md">
                     <User className="w-5 h-5 text-gray-400 mr-3" />

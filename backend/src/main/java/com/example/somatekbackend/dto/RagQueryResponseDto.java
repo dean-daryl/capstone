@@ -24,5 +24,6 @@ public class RagQueryResponseDto {
         private String filename;
         private String chunkText;
         private double score;
+        private String documentUrl;
     }
 }

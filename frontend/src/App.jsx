@@ -4,6 +4,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import MarketingPage from './views/MarketingPage';
 import Dashboard from './views/Dashboard';
 import Analytics from './views/Analytics';
+import QueryPage from './views/QueryPage';
+import DocumentViewer from './views/DocumentViewer';
 import ActivityDetails from './components/recent-activity/ActivityDetails';
 
 function App() {
@@ -14,6 +16,8 @@ function App() {
         <Route  path="/" element={<MarketingPage />} />
         <Route path="/dashboard" element={<Dashboard />}>
           <Route index element={<Analytics />} />
+          <Route path="query" element={<QueryPage />} />
+          <Route path="documents/:id" element={<DocumentViewer />} />
           <Route path="activity/:id" element={<ActivityDetails />} />
         </Route>
       </Routes>

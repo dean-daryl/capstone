@@ -41,6 +41,7 @@ public class DocumentService implements IDocumentService {
     private final ChatClient ragChatClient;
     private final TokenTextSplitter tokenTextSplitter;
     private final IRagDocumentRepository ragDocumentRepository;
+    private final IMinioService minioService;
 
     @Value("${rag.search.top-k:8}")
     private int topK;
@@ -51,11 +52,13 @@ public class DocumentService implements IDocumentService {
     public DocumentService(VectorStore vectorStore,
                            @Qualifier("ragChatClient") ChatClient ragChatClient,
                            TokenTextSplitter tokenTextSplitter,
-                           IRagDocumentRepository ragDocumentRepository) {
+                           IRagDocumentRepository ragDocumentRepository,
+                           IMinioService minioService) {
         this.vectorStore = vectorStore;
         this.ragChatClient = ragChatClient;
         this.tokenTextSplitter = tokenTextSplitter;
         this.ragDocumentRepository = ragDocumentRepository;
+        this.minioService = minioService;
     }
 
     @Override
@@ -74,6 +77,11 @@ public class DocumentService implements IDocumentService {
         try {
             ragDocument.setStatus(EDocumentStatus.PROCESSING);
             ragDocumentRepository.save(ragDocument);
+
+            // Store original file in MinIO
+            String objectName = ragDocument.getId() + "/" + file.getOriginalFilename();
+            minioService.uploadFile(objectName, file);
+            ragDocument.setMinioObjectName(objectName);
 
             // Parse file with Tika
             TikaDocumentReader reader = new TikaDocumentReader(
@@ -156,13 +164,27 @@ public class DocumentService implements IDocumentService {
         List<RagQueryResponseDto.SourceChunk> sources = new ArrayList<>();
         for (Document doc : relevantDocs) {
             RagQueryResponseDto.SourceChunk source = new RagQueryResponseDto.SourceChunk();
-            source.setDocumentId((String) doc.getMetadata().get("documentId"));
+            String documentId = (String) doc.getMetadata().get("documentId");
+            source.setDocumentId(documentId);
             source.setFilename((String) doc.getMetadata().get("filename"));
             source.setChunkText(doc.getText());
             Object score = doc.getMetadata().get("distance");
             if (score instanceof Number) {
                 source.setScore(((Number) score).doubleValue());
             }
+
+            // Populate presigned URL for the source document
+            if (documentId != null) {
+                try {
+                    RagDocument ragDoc = ragDocumentRepository.findById(documentId).orElse(null);
+                    if (ragDoc != null && ragDoc.getMinioObjectName() != null) {
+                        source.setDocumentUrl(minioService.getPresignedUrl(ragDoc.getMinioObjectName()));
+                    }
+                } catch (Exception e) {
+                    logger.warn("Could not generate presigned URL for document {}: {}", documentId, e.getMessage());
+                }
+            }
+
             sources.add(source);
         }
 
@@ -189,8 +211,26 @@ public class DocumentService implements IDocumentService {
             vectorStore.delete(ragDocument.getVectorIds());
         }
 
+        // Remove file from MinIO
+        if (ragDocument.getMinioObjectName() != null) {
+            try {
+                minioService.deleteObject(ragDocument.getMinioObjectName());
+            } catch (Exception e) {
+                logger.warn("Could not delete MinIO object {}: {}", ragDocument.getMinioObjectName(), e.getMessage());
+            }
+        }
+
         // Remove MongoDB record
         ragDocumentRepository.deleteById(id);
+    }
+
+    @Override
+    public String getDocumentViewUrl(String id) {
+        RagDocument ragDocument = getDocumentById(id);
+        if (ragDocument.getMinioObjectName() == null) {
+            throw new RuntimeException("Document has no stored file: " + id);
+        }
+        return minioService.getPresignedUrl(ragDocument.getMinioObjectName());
     }
 
     private void validateFileType(MultipartFile file) {

@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -23,6 +24,9 @@ public class User extends BaseEntity implements UserDetails {
     private String email;
     private String password;
     private ERole role;
+
+    @Column(name = "customer_id")
+    private UUID customerId;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

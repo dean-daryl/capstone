@@ -23,6 +23,7 @@ public class RagDocument {
     private EDocumentStatus status;
     private String errorMessage;
     private List<String> vectorIds;
+    private String minioObjectName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
