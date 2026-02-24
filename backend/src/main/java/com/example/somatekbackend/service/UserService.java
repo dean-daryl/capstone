@@ -5,18 +5,17 @@ import com.example.somatekbackend.dto.UserDto;
 import com.example.somatekbackend.exception.ResourceExistsException;
 import com.example.somatekbackend.models.User;
 import com.example.somatekbackend.repository.IUserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@AllArgsConstructor
 public class UserService implements IUserService {
 
-    @Autowired
-    private IUserRepository userRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    
+    private final IUserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
     @Override
     public User createUser(UserDto userDto) {
         if(userRepository.findUserByEmail(userDto.getEmail()).isPresent()) {

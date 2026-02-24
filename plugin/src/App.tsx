@@ -54,7 +54,11 @@ async function ragQuery(question: string): Promise<RagResponse> {
   const res = await fetch("http://localhost:8080/rag/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ 
+      question,
+      type: "simplify",
+      source: "plugin"
+    }),
   });
   const data = await res.json();
   const elapsed = ((performance.now() - start) / 1000).toFixed(1);
@@ -98,27 +102,33 @@ const App: React.FC = () => {
                 `The user is looking at an image from this URL: ${message.url}. Explain what this image likely contains in simple terms as a teacher would do. Translate it into very basic English suitable for someone below B1 proficiency level. Only provide the answer without additional context or introductory phrases.`
               );
               setResultSimple(markdownToPlainText(response));
-              (async() => {
-                 await fetch(`http://localhost:8080/technology?text=${encodeURIComponent(response)}`, {method: 'POST'})
-
-                 await fetch(`http://localhost:8080/recent-activity`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    "title":`${encodeURIComponent(response)}`
-                  },
-                  body: JSON.stringify({
-                    userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6", 
-                    conversationType:"IMAGE",
-                    conversation: {
-                      "prompt 1": message.url, 
-                      "response 1": response, 
-                    }
-                  })
-        });
-                })()
               
-             
+              // Send to RAG for classification and storage
+              await fetch(`http://localhost:8080/rag/query`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  question: `Classify this explanation: ${response}`,
+                  type: 'classification',
+                  source: 'plugin'
+                })
+              });
+
+              await fetch(`http://localhost:8080/recent-activity`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  "title":`${encodeURIComponent(response)}`
+                },
+                body: JSON.stringify({
+                  userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6",
+                  conversationType:"IMAGE",
+                  conversation: {
+                    "prompt 1": message.url,
+                    "response 1": response,
+                  }
+                })
+              });
             } catch (error) {
               console.error("Error:", error);
             }
@@ -161,25 +171,33 @@ const App: React.FC = () => {
           `Explain the meaning of "${text}" in simple terms. Translate it into basic English suitable for someone below A2 proficiency level. Only provide the answer without additional context or introductory phrases.`
         );
         setResultSimple(response);
-        await fetch(`http://localhost:8080/technology?text=${encodeURIComponent(text)}`, {
+        
+        // Send to RAG for classification and storage
+        await fetch(`http://localhost:8080/rag/query`, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: `Classify this explanation: ${response}`,
+            type: 'classification',
+            source: 'plugin'
+          })
         });
 
-          await fetch(`http://localhost:8080/recent-activity`, {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-             "title":`${encodeURIComponent(text)}`
-           },
-           body: JSON.stringify({
-             userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6", 
-             conversationType:"TEXT",
-             conversation: {
-               "prompt 1": text, 
-               "response 1": response, 
-             }
-           })
- });
+        await fetch(`http://localhost:8080/recent-activity`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           "title":`${encodeURIComponent(text)}`
+         },
+         body: JSON.stringify({
+           userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6",
+           conversationType:"TEXT",
+           conversation: {
+             "prompt 1": text,
+             "response 1": response,
+           }
+         })
+});
       } catch (error) {
         console.error("Error:", error);
       } finally {
@@ -350,7 +368,16 @@ const App: React.FC = () => {
           const videoId = match ? match[1] : null;
 
           (async() => {
-            await fetch(`http://localhost:8080/technology?text=${encodeURIComponent(simplifiedResponse)}`, {method: 'POST'})
+            // Send to RAG for classification and storage
+            await fetch(`http://localhost:8080/rag/query`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                question: `Classify this explanation: ${simplifiedResponse}`,
+                type: 'classification',
+                source: 'plugin'
+              })
+            });
 
             await fetch(`http://localhost:8080/recent-activity`, {
                 method: 'POST',
