@@ -6,4 +6,5 @@ public interface IMinioService {
     void uploadFile(String objectName, MultipartFile file);
     String getPresignedUrl(String objectName);
     void deleteObject(String objectName);
+    boolean objectExists(String objectName);
 }
