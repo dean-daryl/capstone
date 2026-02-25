@@ -1,6 +1,8 @@
 import { Chrome, Github, X } from 'lucide-react';
 import React, { useState } from 'react';
-import { login, signup } from '../api/authService';
+import { useNavigate } from 'react-router-dom';
+import { login as loginApi, signup } from '../api/authService';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
 const loginDataInitial = {
@@ -19,6 +21,9 @@ const signupDataInitial = {
 export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
   const [loginData, setLoginData] = useState(loginDataInitial);
   const [signupData, setSignupData] = useState(signupDataInitial);
+  const { login: authLogin } = useAuth();
+  const navigate = useNavigate();
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (type === 'login') {
@@ -34,30 +39,30 @@ export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (type === 'login') {
-      const response = await login(loginData);
-      if(response?.status == true){
+      const response = await loginApi(loginData);
+      if (response?.status == true) {
         toast.success('Login successful');
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem("firstName", response.data.firstName);
-        localStorage.setItem("lastName", response.data.lastName);
-        localStorage.setItem("role", response.data.role); 
-        
-        window.location.href = '/dashboard';
-      }
-      else{
+        authLogin({
+          token: response.data.token,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          email: response.data.email,
+          role: response.data.role,
+          userId: response.data.userId,
+        });
+        onClose();
+        navigate('/dashboard');
+      } else {
         toast.error(response.message);
       }
-
     } else {
       const response = await signup(signupData);
-      if(response?.status == true){
+      if (response?.status == true) {
         toast.success('Signup successful');
-         onModalSwitch();
-      }
-      else{
+        onModalSwitch();
+      } else {
         toast.error(response.message);
       }
-      
     }
   };
 
@@ -72,7 +77,7 @@ export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
         >
           <X className="w-5 h-5" />
         </button>
-        
+
         <h2 className="text-2xl font-bold mb-6">
           {type === 'login' ? 'Welcome Back' : 'Create Account'}
         </h2>
@@ -88,7 +93,7 @@ export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
               onChange={handleChange}
               className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
             />
-            
+
             <input
               type="text"
               name="lastName"
@@ -97,16 +102,18 @@ export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
               onChange={handleChange}
               className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
             />
-             <input
-              type="text"
+            <select
               name="role"
-              placeholder="Role i.e Student, Institution"
               value={signupData.role}
               onChange={handleChange}
-              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-            />
+              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-100"
+            >
+              <option value="">Select Role</option>
+              <option value="STUDENT">Student</option>
+              <option value="TEACHER">Teacher</option>
+            </select>
           </div>
-          
+
           )}
           <input
             type="email"
@@ -124,7 +131,7 @@ export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
             onChange={handleChange}
             className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
           />
-          
+
           <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors">
             {type === 'login' ? 'Sign In' : 'Sign Up'}
           </button>

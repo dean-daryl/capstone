@@ -17,4 +17,20 @@ apiClient.interceptors.request.use(
   }
 );
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("firstName");
+      localStorage.removeItem("lastName");
+      localStorage.removeItem("email");
+      localStorage.removeItem("role");
+      localStorage.removeItem("userId");
+      window.location.href = "/";
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;

@@ -73,7 +73,7 @@ public class OAuthService implements IOAuthService {
         return response;
     }
 
-        public Map<String, String> getProfileDetailsGoogle(String accessToken) {
+    public Map<String, String> getProfileDetailsGoogle(String accessToken) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.setBearerAuth(accessToken);
@@ -85,21 +85,22 @@ public class OAuthService implements IOAuthService {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> responseMap = objectMapper.convertValue(response.getBody(), Map.class);
         String email = (String) responseMap.get("email");
-        User user = userRepository.findUserByEmail(email).orElseThrow(()-> new RuntimeException("User with such an email doesnt exist"));
+        User user = userRepository.findUserByEmail(email).orElseThrow(() -> new RuntimeException("User with such an email doesnt exist"));
 
-            String token;
-            try {
-                token = tokenUtil.generateToken(user);
-
-            } catch (BadCredentialsException e) {
-                throw new RuntimeException("Invalid username or password");
-            } catch (Exception e) {
-                throw new RuntimeException("Login failed: " + e.getMessage());
-            }
-         Map<String, String> map = new HashMap<>();
-            map.put("token", token);
-            map.put("firstname", user.getFirstName());
-            map.put("userId", String.valueOf(user.getId()));
+        String token;
+        try {
+            token = tokenUtil.generateToken(user, user.getRole().name());
+        } catch (BadCredentialsException e) {
+            throw new RuntimeException("Invalid username or password");
+        } catch (Exception e) {
+            throw new RuntimeException("Login failed: " + e.getMessage());
+        }
+        Map<String, String> map = new HashMap<>();
+        map.put("token", token);
+        map.put("firstname", user.getFirstName());
+        map.put("lastname", user.getLastName());
+        map.put("userId", String.valueOf(user.getId()));
+        map.put("role", user.getRole().name());
         return map;
     }
 
@@ -119,7 +120,7 @@ public class OAuthService implements IOAuthService {
             Authentication authentication = authenticationManager.authenticate(authenticationToken);
             SecurityContextHolder.getContext().setAuthentication(authentication);
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            String token = tokenUtil.generateToken(userDetails);
+            String token = tokenUtil.generateToken(userDetails, user.getRole().name());
             return new LoginResponse(token, "Bearer", user.getId(), user.getEmail(), user.getEmail(), user.getFirstName(), user.getLastName(), String.valueOf(user.getRole()));
 
         } catch (BadCredentialsException e) {
@@ -131,8 +132,11 @@ public class OAuthService implements IOAuthService {
 
     @Override
     public User signup(UserDto userDto) {
+        if (userDto.getRole() == null || userDto.getRole().isBlank()) {
+            userDto.setRole("STUDENT");
+        }
         User user = (User) userService.createUser(userDto);
-        if(ObjectUtils.isEmpty(user)) {
+        if (ObjectUtils.isEmpty(user)) {
             throw new RuntimeException("User creation failed");
         }
 
