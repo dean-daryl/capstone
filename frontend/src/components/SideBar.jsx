@@ -1,18 +1,21 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Bot, CircleUserRound, LayoutDashboard, MessageSquare, PanelRightClose, Settings, User, X } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Bot, CircleUserRound, LogOut, PanelRightClose, X } from "lucide-react";
 import RecentActivities from "./recent-activity/RecentActivities.jsx";
-import sidebar from "../../public/assets/sidebar.svg";
+import menuConfig from "../config/menuConfig.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 function SideBar({ isOpen, setIsOpen }) {
-  const firstName = localStorage.getItem("firstName") + " " + localStorage.getItem("lastName") ?? "";
-  const role = localStorage.getItem("role");
+  const { user, role, logout } = useAuth();
+  const location = useLocation();
+  const displayName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "";
+  const menuItems = menuConfig[role] || menuConfig.STUDENT;
+
   return (
     <>
       <div
         className={`fixed top-0 left-0 h-screen flex flex-col justify-between bg-gray-900 text-gray-100 shadow-lg transition-all ${
           isOpen ? "w-75" : "w-0"
-        } overflow-hidden`}
+        } overflow-hidden z-40`}
       >
         {isOpen && (
           <>
@@ -42,34 +45,46 @@ function SideBar({ isOpen, setIsOpen }) {
               </div>
               <div className="py-4 px-4 bg-gray-900">
                 <div className="py-2 space-y-1">
-                  <Link to="/dashboard" className="flex items-center py-2 px-4 hover:bg-gray-800 rounded-md">
-                    <LayoutDashboard className="w-5 h-5 text-gray-400 mr-3" />
-                    <span className="text-sm font-medium text-gray-100">Dashboard</span>
-                  </Link>
-                  <Link to="/dashboard/query" className="flex items-center py-2 px-4 hover:bg-gray-800 rounded-md">
-                    <MessageSquare className="w-5 h-5 text-gray-400 mr-3" />
-                    <span className="text-sm font-medium text-gray-100">Ask AI</span>
-                  </Link>
+                  {menuItems.map((item, index) => {
+                    if (item.type === "recent-activities") {
+                      return <RecentActivities key="recent-activities" />;
+                    }
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={index}
+                        to={item.path}
+                        className={`flex items-center py-2 px-4 rounded-md transition-colors ${
+                          isActive
+                            ? "bg-gray-800 text-purple-400"
+                            : "hover:bg-gray-800 text-gray-100"
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 mr-3 ${isActive ? "text-purple-400" : "text-gray-400"}`} />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </Link>
+                    );
+                  })}
                 </div>
-                {role === "STUDENT" ? <RecentActivities /> :
-                <div className="py-4">
-                  <Link to="/users" className="flex items-center py-2 px-4 hover:bg-gray-800 rounded-md">
-                    <User className="w-5 h-5 text-gray-400 mr-3" />
-                    <span className="text-sm font-medium text-gray-100">Users</span>
-                  </Link>
-                  <Link to="/settings" className="flex items-center py-2 px-4 hover:bg-gray-800 rounded-md">
-                    <Settings className="w-5 h-5 text-gray-400 mr-3" />
-                    <span className="text-sm font-medium text-gray-100">Settings</span>
-                  </Link>
-                </div>
-                }
-
               </div>
             </div>
-            <div className="mt-auto">
-              <div className="flex items-center gap-3 px-4 py-3 bg-gray-900">
-                <CircleUserRound className="w-6 h-6 text-gray-200" />
-                <h3 className="text-sm font-medium text-gray-100">{firstName}</h3>
+            <div className="mt-auto border-t border-gray-800">
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-900">
+                <div className="flex items-center gap-3">
+                  <CircleUserRound className="w-6 h-6 text-gray-200" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-100">{displayName}</h3>
+                    <span className="text-xs text-gray-400">{role}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-2 hover:bg-gray-800 rounded-md transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4 text-gray-400" />
+                </button>
               </div>
             </div>
           </>

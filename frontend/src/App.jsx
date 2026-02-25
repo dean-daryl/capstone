@@ -1,27 +1,60 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import MarketingPage from './views/MarketingPage';
 import Dashboard from './views/Dashboard';
 import Analytics from './views/Analytics';
 import QueryPage from './views/QueryPage';
 import DocumentViewer from './views/DocumentViewer';
 import ActivityDetails from './components/recent-activity/ActivityDetails';
+import ProfilePage from './views/ProfilePage';
+import SettingsPage from './views/SettingsPage';
+import UsersPage from './views/UsersPage';
+import CoursesPage from './views/CoursesPage';
 
 function App() {
   return (
     <ThemeProvider>
-    <Router>
-      <Routes>
-        <Route  path="/" element={<MarketingPage />} />
-        <Route path="/dashboard" element={<Dashboard />}>
-          <Route index element={<Analytics />} />
-          <Route path="query" element={<QueryPage />} />
-          <Route path="documents/:id" element={<DocumentViewer />} />
-          <Route path="activity/:id" element={<ActivityDetails />} />
-        </Route>
-      </Routes>
-    </Router>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<MarketingPage />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Analytics />} />
+              <Route path="query" element={<QueryPage />} />
+              <Route path="documents/:id" element={<DocumentViewer />} />
+              <Route path="activity/:id" element={<ActivityDetails />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route
+                path="users"
+                element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <UsersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="courses"
+                element={
+                  <ProtectedRoute allowedRoles={['TEACHER', 'ADMIN']}>
+                    <CoursesPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
+          </Routes>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
