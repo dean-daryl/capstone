@@ -4,7 +4,7 @@ data/
 logs/
 
 # ML model files (too large for git)
-models/
+/models
 
 # Docker volumes and cache
 docker-compose.override.yml

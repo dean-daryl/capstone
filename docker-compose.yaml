@@ -162,6 +162,29 @@ services:
     networks:
       - rag-network
 
+  nllb-translate:
+    build:
+      context: ./services/nllb-translate
+      dockerfile: Dockerfile
+    container_name: rag-nllb-translate
+    restart: unless-stopped
+    volumes:
+      - ./models/nllb-kin-ct2:/app/model:ro
+    ports:
+      - "8002:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - rag-network
+
   # =====================================
   # BACKEND LAYER
   # =====================================
@@ -198,6 +221,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
       - TEXTCAT_SERVICE_URL=http://textcat:8000
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - NLLB_SERVICE_URL=http://nllb-translate:8000
     ports:
       - "8080:8080"
     volumes:

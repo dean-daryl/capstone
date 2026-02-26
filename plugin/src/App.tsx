@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import * as Tabs from "@radix-ui/react-tabs";
 import { Header } from "./components/Header";
-import { TimestampModal } from "./components/TimestampModal";
+import { LoginForm } from "./components/LoginForm";
+import { ChatHistory } from "./components/ChatHistory";
+import { ActionButtons } from "./components/ActionButtons";
 import { SourceCard } from "./components/SourceCard";
-import { Card, CardContent } from "../src/components/ui/card";
+import { Card, CardContent } from "./components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -11,28 +12,29 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./components/ui/dialog";
-import { Loader2, FileText, ExternalLink } from "lucide-react";
-import { cn } from "../src/lib/util";
+import { Loader2, FileText, ExternalLink, LogOut, History } from "lucide-react";
+import { cn } from "./lib/util";
 
-const OLLAMA_BASE_URL = "http://localhost:11434";
-const OLLAMA_MODEL = "qwen2.5:1.5b";
+const API_BASE = "http://localhost:8080";
 
-async function ollamaChat(prompt: string): Promise<string> {
-  const start = performance.now();
-  console.log(`[Ollama] Request started`);
-  const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: OLLAMA_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      stream: false,
-    }),
-  });
-  const data = await res.json();
-  const elapsed = ((performance.now() - start) / 1000).toFixed(1);
-  console.log(`[Ollama] Response received in ${elapsed}s:`, data.message.content.substring(0, 100));
-  return data.message.content;
+// Chrome extension storage helpers with localStorage fallback
+const isChromeExtension = typeof chrome !== "undefined" && !!chrome.storage?.local;
+
+function storageGet(key: string): Promise<string | null> {
+  if (isChromeExtension) {
+    return new Promise((resolve) => {
+      chrome.storage.local.get([key], (result) => resolve(result[key] ?? null));
+    });
+  }
+  return Promise.resolve(localStorage.getItem(key));
+}
+
+function storageRemove(key: string): void {
+  if (isChromeExtension) {
+    chrome.storage.local.remove([key]);
+  } else {
+    localStorage.removeItem(key);
+  }
 }
 
 interface SourceChunk {
@@ -48,467 +50,347 @@ interface RagResponse {
   sources: SourceChunk[];
 }
 
-async function ragQuery(question: string): Promise<RagResponse> {
-  const start = performance.now();
-  console.log(`[RAG] Query started: "${question.substring(0, 80)}"`);
-  const res = await fetch("http://localhost:8080/rag/query", {
+interface QueryHistoryItem {
+  id: string;
+  text: string;
+  response: string;
+  source: string;
+  createdAt: string;
+}
+
+function authHeaders(token: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+async function ragQuery(question: string, token: string | null): Promise<RagResponse> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}/rag/query`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ 
+    headers,
+    body: JSON.stringify({
       question,
-      type: "simplify",
-      source: "plugin"
+      type: "rag",
+      source: "plugin",
     }),
   });
   const data = await res.json();
-  const elapsed = ((performance.now() - start) / 1000).toFixed(1);
-  console.log(`[RAG] Response received in ${elapsed}s:`, data);
+  if (!data.status) throw new Error(data.message || "Query failed");
   return data.data as RagResponse;
 }
 
+async function translateText(text: string, token: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/translate`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      text,
+      srcLang: "eng_Latn",
+      tgtLang: "kin_Latn",
+    }),
+  });
+  const data = await res.json();
+  if (!data.status) throw new Error(data.message || "Translation failed");
+  return data.data.translatedText;
+}
+
+async function simplifyText(text: string, token: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/simplify`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ text }),
+  });
+  const data = await res.json();
+  if (!data.status) throw new Error(data.message || "Simplification failed");
+  return data.data.simplifiedText;
+}
+
+async function fetchQueryHistory(token: string): Promise<QueryHistoryItem[]> {
+  const res = await fetch(`${API_BASE}/rag/queries`, {
+    headers: authHeaders(token),
+  });
+  const data = await res.json();
+  if (!data.status) return [];
+  return data.data as QueryHistoryItem[];
+}
+
 const App: React.FC = () => {
-  const [text, setResult] = useState("");
-  const [simplifiedText, setResultSimple] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [videoDuration, setVideoDuration] = useState<number | null>(null);
-  const [videoSource, setVideoSource] = useState("");
-  const [_imagePath, setImagePath] = useState("")
-  const [activeTab, setActiveTab] = useState<"simplify" | "search">("simplify");
+  // Auth state
+  const [token, setToken] = useState<string | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+
+  // Query state
+  const [selectedText, setSelectedText] = useState("");
   const [ragAnswer, setRagAnswer] = useState("");
   const [ragSources, setRagSources] = useState<SourceChunk[]>([]);
-  const [isRagLoading, setIsRagLoading] = useState(false);
-  const [ragError, setRagError] = useState("");
+  const [isQuerying, setIsQuerying] = useState(false);
+  const [queryError, setQueryError] = useState("");
+
+  // Action state
+  const [translatedText, setTranslatedText] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [simplifiedText, setSimplifiedText] = useState("");
+  const [isSimplifying, setIsSimplifying] = useState(false);
+
+  // History state
+  const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Source detail modal
   const [selectedSource, setSelectedSource] = useState<SourceChunk | null>(null);
 
-  const GROK_API_KEY = process.env.REACT_APP_GROQ_API_KEY;
-  const markdownToPlainText = (text: string): string => {
-    return text
-      .replace(/\*\*(.+?)\*\*/g, '$1') // Remove ** for bold text
-      .replace(/^\s*\*\s+/gm, '- ')    // Replace markdown bullets (*) with dashes (-)
-      .replace(/(\s*- )/g, '\n$1')     // Add a newline before lines starting with a dash
-      .replace(/(\n|^)(\d+\.\s)/g, '\n$2'); // Add a newline before numbered points
-  };
-  
-  
+  // Load token from storage on mount
   useEffect(() => {
-    chrome.runtime.onMessage.addListener((message) => {
-        if (message.url) {
-          setImagePath(message.url);
-          (async() => {
-            setIsLoading(true);
-            try {
-              const response = await ollamaChat(
-                `The user is looking at an image from this URL: ${message.url}. Explain what this image likely contains in simple terms as a teacher would do. Translate it into very basic English suitable for someone below B1 proficiency level. Only provide the answer without additional context or introductory phrases.`
-              );
-              setResultSimple(markdownToPlainText(response));
-              
-              // Send to RAG for classification and storage
-              await fetch(`http://localhost:8080/rag/query`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  question: `Classify this explanation: ${response}`,
-                  type: 'classification',
-                  source: 'plugin'
-                })
-              });
-
-              await fetch(`http://localhost:8080/recent-activity`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  "title":`${encodeURIComponent(response)}`
-                },
-                body: JSON.stringify({
-                  userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6",
-                  conversationType:"IMAGE",
-                  conversation: {
-                    "prompt 1": message.url,
-                    "response 1": response,
-                  }
-                })
-              });
-            } catch (error) {
-              console.error("Error:", error);
-            }
-            finally {
-              setIsLoading(false);
-            }
-          })()
-        }
+    storageGet("authToken").then((t) => {
+      if (t) setToken(t);
     });
+  }, []);
 
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tabId = tabs[0].id as number;
-
-      chrome.scripting.executeScript(
-        {
-          target: { tabId },
-          func: () => {
-            const title = window.getSelection()?.toString();
-            return title;
-          },
-        },
-        (injectionResults) => {
-          if (chrome.runtime.lastError) {
-            console.error("Script injection failed:", chrome.runtime.lastError.message);
-            return;
-          }
-
-          if (injectionResults && injectionResults.length > 0) {
-            const pageTitle = injectionResults[0].result as string;
-            setResult(pageTitle);
-          }
-        }
-      );
-    });
-
-    async function getOllamaChatCompletion() {
-      setIsLoading(true);
-      try {
-        const response = await ollamaChat(
-          `Explain the meaning of "${text}" in simple terms. Translate it into basic English suitable for someone below A2 proficiency level. Only provide the answer without additional context or introductory phrases.`
-        );
-        setResultSimple(response);
-        
-        // Send to RAG for classification and storage
-        await fetch(`http://localhost:8080/rag/query`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            question: `Classify this explanation: ${response}`,
-            type: 'classification',
-            source: 'plugin'
-          })
-        });
-
-        await fetch(`http://localhost:8080/recent-activity`, {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-           "title":`${encodeURIComponent(text)}`
-         },
-         body: JSON.stringify({
-           userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6",
-           conversationType:"TEXT",
-           conversation: {
-             "prompt 1": text,
-             "response 1": response,
-           }
-         })
-});
-      } catch (error) {
-        console.error("Error:", error);
-      } finally {
-        setIsLoading(false);
-      }
+  // Fetch history when token becomes available
+  useEffect(() => {
+    if (token) {
+      fetchQueryHistory(token).then(setQueryHistory).catch(console.error);
     }
+  }, [token]);
+
+  // Capture selected text from active tab (only in Chrome extension context)
+  useEffect(() => {
+    if (typeof chrome === "undefined" || !chrome.tabs?.query) return;
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tabId = tabs[0].id as number;
+      const tabId = tabs[0]?.id;
+      if (!tabId) return;
 
       chrome.scripting.executeScript(
         {
           target: { tabId },
-          func: () => {
-            const videos = window.document.getElementsByTagName("video");
-            const videoElement = videos[0];
-            const title = window.getSelection()?.toString();
-            if (videoElement && (!title || title.length < 1)) {
-              return { src: videoElement.src, duration: videoElement.duration, currentSrc: videoElement.currentSrc};
-            }
-            return null;
-          },
+          func: () => window.getSelection()?.toString() || "",
         },
-        (injectionResults) => {
+        (results) => {
           if (chrome.runtime.lastError) {
             console.error("Script injection failed:", chrome.runtime.lastError.message);
             return;
           }
-
-          if (injectionResults && injectionResults.length > 0) {
-            const videoData = injectionResults[0].result;
-            if (videoData && text.length < 1) {
-              setVideoDuration(videoData.duration);
-              setVideoSource(videoData.currentSrc);
-              console.log(videoSource);
-              setShowModal(true);
-            }
+          if (results?.[0]?.result) {
+            setSelectedText(results[0].result as string);
           }
         }
       );
     });
+  }, []);
 
-    async function performRagSearch() {
-      setIsRagLoading(true);
-      setRagError("");
-      try {
-        const result = await ragQuery(text);
+  // Perform RAG query when selected text is available
+  useEffect(() => {
+    if (selectedText.trim().length <= 3) return;
+
+    setIsQuerying(true);
+    setQueryError("");
+    setRagAnswer("");
+    setRagSources([]);
+    setTranslatedText("");
+    setSimplifiedText("");
+
+    ragQuery(selectedText, token)
+      .then((result) => {
         setRagAnswer(result.answer);
         setRagSources(result.sources ?? []);
-      } catch (error) {
-        console.error("RAG error:", error);
-        setRagError("Failed to search documents. Is the backend running?");
-      } finally {
-        setIsRagLoading(false);
-      }
-    }
+        // Refresh history after new query
+        if (token) {
+          fetchQueryHistory(token).then(setQueryHistory).catch(console.error);
+        }
+      })
+      .catch((err) => {
+        console.error("RAG error:", err);
+        setQueryError("Failed to search documents. Is the backend running?");
+      })
+      .finally(() => setIsQuerying(false));
+  }, [selectedText]);
 
-    if (text.trim().length > 3) {
-      getOllamaChatCompletion();
-      performRagSearch();
+  const handleTranslate = async () => {
+    if (!token || !ragAnswer) return;
+    setIsTranslating(true);
+    try {
+      const result = await translateText(ragAnswer, token);
+      setTranslatedText(result);
+    } catch (err) {
+      console.error("Translation error:", err);
+    } finally {
+      setIsTranslating(false);
     }
-  }, [text]);
-
-  const handleConfirmTimestamps = (start: number, end: number) => {
-    transcribeSelectedRange(start, end);
   };
 
-  async function transcribeSelectedRange(startTime: number, endTime: number) {
+  const handleSimplify = async () => {
+    if (!token || !ragAnswer) return;
+    setIsSimplifying(true);
     try {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tabId = tabs[0].id as number;
-        chrome.scripting.executeScript(
-          {
-            target: { tabId },
-            func: (startTime, endTime) => {
-              const videoElement = document.getElementsByTagName("video")[0];
-
-              if (videoElement) {
-                videoElement.currentTime = startTime;
-                videoElement.play();
-                const checkTime = () => {
-                  if (videoElement.currentTime >= endTime) {
-                    videoElement.pause();
-                    videoElement.removeEventListener("timeupdate", checkTime);
-                  }
-                };
-                videoElement.addEventListener("timeupdate", checkTime);
-              }
-            },
-            args: [startTime, endTime],
-          },
-          () => {
-            if (chrome.runtime.lastError) {
-              console.error("Script injection failed:", chrome.runtime.lastError.message);
-            } else {
-              captureTabAudio(startTime, endTime);
-            }
-          }
-        );
-      });
-    } catch (error) {
-      console.error("Error accessing display media:", error);
-    }
-  }
-
-  function captureTabAudio(startTime: number, endTime: number) {
-    setIsLoading(true);
-    chrome.tabCapture.capture({ audio: true }, (stream) => {
-      if (chrome.runtime.lastError || !stream) {
-        console.error("Failed to capture tab:", chrome.runtime.lastError);
-        setIsLoading(false);
-        return;
-      }
-
-      const audioContext = new AudioContext();
-      const source = audioContext.createMediaStreamSource(stream);
-      const destination = audioContext.createMediaStreamDestination();
-
-      source.connect(destination);
-      source.connect(audioContext.destination);
-
-      const mediaRecorder = new MediaRecorder(destination.stream);
-      const audioChunks: BlobPart[] = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunks.push(event.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-        await transcribeAudio(audioBlob);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), (endTime - startTime) * 1000);
-    });
-  }
-
-  async function transcribeAudio(audioBlob: Blob) {
-    try {
-      const formData = new FormData();
-      formData.append("file", audioBlob, "audio.wav");
-      formData.append("model", "whisper-large-v3");
-      formData.append("prompt", "Specify context or spelling");
-      formData.append("temperature", "0");
-      formData.append("response_format", "json");
-
-      const response = await fetch("https://api.groq.com/openai/v1/audio/translations", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${GROK_API_KEY}`,
-        },
-        body: formData,
-      });
-
-      const transcriptionResult = await response.json();
-      if (transcriptionResult.text) {
-        const simplifiedResponse = await ollamaChat(
-          `Explain the meaning of "${transcriptionResult.text}" in simple terms. Translate it into basic English suitable for someone below A2 proficiency level. Only provide the answer without additional context or introductory phrases. Note that its video transcription where accents can often be misleading try to be creative in case of any ambiguity. Feel free to correct mistakes in the transcription. For example technology names or any other jargon. Eliminate any unnecessary words like Here's an explanation and stuff.`
-        );
-        setResultSimple(simplifiedResponse);
-
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-
-          const tabUrl = tabs[0].url as string;
-          const match = tabUrl.match(/[?&]v=([^&]+)/);
-          const videoId = match ? match[1] : null;
-
-          (async() => {
-            // Send to RAG for classification and storage
-            await fetch(`http://localhost:8080/rag/query`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                question: `Classify this explanation: ${simplifiedResponse}`,
-                type: 'classification',
-                source: 'plugin'
-              })
-            });
-
-            await fetch(`http://localhost:8080/recent-activity`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  "title":`${transcriptionResult.text}`
-                },
-                body: JSON.stringify({
-                  userId: "565f4ee2-0729-450c-9bf5-5b382fe82ea6",
-                  conversationType:"VIDEO",
-                  conversation: {
-                    "prompt 1": `<iframe
-                                  src="https://www.youtube.com/embed/${videoId}"
-                                  width="560"
-                                  height="315"
-                                  frameborder="0"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowfullscreen
-                                ></iframe>`,
-                    "response 1": simplifiedResponse,
-                  }
-                })
-              });
-            
-          })()
-        });
-
-        
-       
-      }
-    } catch (error) {
-      console.error("Error transcribing audio:", error);
+      const result = await simplifyText(ragAnswer, token);
+      setSimplifiedText(result);
+    } catch (err) {
+      console.error("Simplify error:", err);
     } finally {
-      setIsLoading(false);
+      setIsSimplifying(false);
     }
-  }
+  };
+
+  const handleLogout = () => {
+    storageRemove("authToken");
+    setToken(null);
+    setQueryHistory([]);
+    setShowLogin(false);
+  };
+
+  const handleLoginSuccess = (newToken: string) => {
+    setToken(newToken);
+    setShowLogin(false);
+  };
 
   return (
     <div className="w-[500px] h-fit bg-background text-foreground">
-      <Header />
-      
+      {/* Header with auth controls */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <Header />
+        <div className="flex items-center gap-2">
+          {token ? (
+            <>
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  showHistory ? "bg-purple-100 text-purple-700" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+                title="Chat history"
+              >
+                <History className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Log out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowLogin(!showLogin)}
+              className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
+            >
+              Log in
+            </button>
+          )}
+        </div>
+      </div>
+
       <main className="p-4 space-y-4">
-        <Tabs.Root value={activeTab} onValueChange={(v) => setActiveTab(v as "simplify" | "search")}>
-          <Tabs.List className="flex border-b mb-4">
-            <Tabs.Trigger
-              value="simplify"
-              className="flex-1 py-2 text-sm font-medium text-center transition-colors data-[state=active]:border-b-2 data-[state=active]:border-purple-600 data-[state=active]:text-purple-600 text-muted-foreground hover:text-foreground"
-            >
-              Simplify
-            </Tabs.Trigger>
-            <Tabs.Trigger
-              value="search"
-              className="flex-1 py-2 text-sm font-medium text-center transition-colors data-[state=active]:border-b-2 data-[state=active]:border-purple-600 data-[state=active]:text-purple-600 text-muted-foreground hover:text-foreground"
-            >
-              Search Documents
-            </Tabs.Trigger>
-          </Tabs.List>
+        {/* Login form */}
+        {showLogin && !token && (
+          <Card>
+            <CardContent className="pt-4">
+              <LoginForm onLoginSuccess={handleLoginSuccess} />
+            </CardContent>
+          </Card>
+        )}
 
-          <Tabs.Content value="simplify">
-            <Card className={cn(
-              "transition-all duration-300",
-              isLoading ? "opacity-50" : "opacity-100"
-            )}>
-              <CardContent className="pt-6">
-                {simplifiedText ? (
-                  <p className="text-[15px] leading-relaxed">{simplifiedText}</p>
-                ) : (
-                  <div className="flex items-center justify-center py-8">
-                    {isLoading ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                        <p className="text-sm text-muted-foreground">Processing...</p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Select text or a video segment to simplify
-                      </p>
-                    )}
-                  </div>
+        {/* Chat history */}
+        {showHistory && token && queryHistory.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Recent Queries
+            </p>
+            <ChatHistory history={queryHistory} />
+          </div>
+        )}
+
+        {/* RAG Answer */}
+        <Card className={cn(
+          "transition-all duration-300",
+          isQuerying ? "opacity-50" : "opacity-100"
+        )}>
+          <CardContent className="pt-4">
+            {isQuerying ? (
+              <div className="flex flex-col items-center gap-2 py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Searching documents...</p>
+              </div>
+            ) : queryError ? (
+              <p className="text-sm text-red-500">{queryError}</p>
+            ) : ragAnswer ? (
+              <div className="space-y-4">
+                {/* Answer */}
+                <p className="text-[15px] leading-relaxed">{ragAnswer}</p>
+
+                {/* Action buttons (translate & simplify) */}
+                {token && (
+                  <ActionButtons
+                    onTranslate={handleTranslate}
+                    onSimplify={handleSimplify}
+                    isTranslating={isTranslating}
+                    isSimplifying={isSimplifying}
+                  />
                 )}
-              </CardContent>
-            </Card>
-          </Tabs.Content>
 
-          <Tabs.Content value="search">
-            <Card className={cn(
-              "transition-all duration-300",
-              isRagLoading ? "opacity-50" : "opacity-100"
-            )}>
-              <CardContent className="pt-6">
-                {isRagLoading ? (
-                  <div className="flex flex-col items-center gap-2 py-8">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground">Searching documents...</p>
-                  </div>
-                ) : ragError ? (
-                  <p className="text-sm text-red-500">{ragError}</p>
-                ) : ragAnswer ? (
-                  <div className="space-y-4">
-                    <p className="text-[15px] leading-relaxed">{ragAnswer}</p>
-                    {ragSources.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sources</p>
-                        <div className="flex flex-wrap gap-2">
-                          {ragSources.map((source, i) => (
-                            <SourceCard
-                              key={`${source.documentId}-${i}`}
-                              filename={source.filename}
-                              score={source.score}
-                              documentUrl={source.documentUrl}
-                              onClick={() => setSelectedSource(source)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 py-8">
-                    <FileText className="w-8 h-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Select text to search your uploaded documents
+                {/* Simplified text */}
+                {simplifiedText && (
+                  <div className="space-y-1 border-t pt-3">
+                    <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
+                      Simplified
                     </p>
+                    <p className="text-sm leading-relaxed">{simplifiedText}</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </Tabs.Content>
-        </Tabs.Root>
+
+                {/* Kinyarwanda translation */}
+                {translatedText && (
+                  <div className="space-y-1 border-t pt-3">
+                    <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">
+                      Kinyarwanda
+                    </p>
+                    <p className="text-sm leading-relaxed">{translatedText}</p>
+                  </div>
+                )}
+
+                {/* Sources */}
+                {ragSources.length > 0 && (
+                  <div className="space-y-2 border-t pt-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Sources
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {ragSources.map((source, i) => (
+                        <SourceCard
+                          key={`${source.documentId}-${i}`}
+                          filename={source.filename}
+                          score={source.score}
+                          documentUrl={source.documentUrl}
+                          onClick={() => setSelectedSource(source)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-8">
+                <FileText className="w-8 h-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Select text on any page to search your documents
+                </p>
+                {!token && (
+                  <p className="text-xs text-muted-foreground">
+                    Log in to translate, simplify, and view history
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
 
+      {/* Source detail modal */}
       <Dialog open={!!selectedSource} onOpenChange={(open) => { if (!open) setSelectedSource(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -540,14 +422,6 @@ const App: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-
-      {showModal && (
-        <TimestampModal
-          onConfirm={handleConfirmTimestamps}
-          onClose={() => setShowModal(false)}
-          videoDuration={videoDuration ?? 0}
-        />
-      )}
     </div>
   );
 };

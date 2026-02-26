@@ -1,12 +1,15 @@
 package com.example.somatekbackend.controllers;
 
+import com.example.somatekbackend.dto.QueryHistoryDto;
 import com.example.somatekbackend.dto.RagQueryRequestDto;
 import com.example.somatekbackend.dto.ResponseObjectDto;
+import com.example.somatekbackend.models.User;
 import com.example.somatekbackend.service.IDocumentService;
 import com.example.somatekbackend.service.UserQueryService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -73,6 +77,16 @@ public class RagController {
             return ResponseEntity.ok(new ResponseObjectDto(java.util.Map.of("url", url)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ResponseObjectDto(e));
+        }
+    }
+
+    @GetMapping("/queries")
+    public ResponseEntity<ResponseObjectDto> getQueryHistory(@AuthenticationPrincipal User user) {
+        try {
+            List<QueryHistoryDto> history = userQueryService.getQueryHistory(user.getCustomerId());
+            return ResponseEntity.ok(new ResponseObjectDto(history));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new ResponseObjectDto(e));
         }
     }
 

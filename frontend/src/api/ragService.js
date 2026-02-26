@@ -28,3 +28,17 @@ export const deleteDocument = async (id) => {
   const response = await apiClient.delete(`/rag/documents/${id}`);
   return response.data;
 };
+
+export const translateText = async (text) => {
+  const response = await apiClient.post("/translate", {
+    text,
+    srcLang: "eng_Latn",
+    tgtLang: "kin_Latn",
+  });
+  return response.data;
+};
+
+export const simplifyText = async (text) => {
+  const response = await apiClient.post("/simplify", { text });
+  return response.data;
+};

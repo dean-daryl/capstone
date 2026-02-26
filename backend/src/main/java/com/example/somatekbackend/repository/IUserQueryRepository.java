@@ -11,6 +11,7 @@ import java.util.UUID;
 @Repository
 public interface IUserQueryRepository extends JpaRepository<UserQuery, UUID> {
     List<UserQuery> findByCustomerId(UUID customerId);
+    List<UserQuery> findByCustomerIdOrderByCreatedAtDesc(UUID customerId);
     List<UserQuery> findByType(String type);
 
     @Query("SELECT COALESCE(AVG(q.satisfaction), 0) FROM UserQuery q WHERE q.satisfaction IS NOT NULL")

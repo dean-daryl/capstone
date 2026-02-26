@@ -1,5 +1,6 @@
 package com.example.somatekbackend.service;
 
+import com.example.somatekbackend.dto.QueryHistoryDto;
 import com.example.somatekbackend.dto.RagQueryRequestDto;
 import com.example.somatekbackend.dto.RagQueryResponseDto;
 import com.example.somatekbackend.models.UserQuery;
@@ -52,6 +53,19 @@ public class UserQueryService {
             userQueryRepository.save(savedQuery);
             throw e;
         }
+    }
+
+    public List<QueryHistoryDto> getQueryHistory(UUID customerId) {
+        return userQueryRepository.findByCustomerIdOrderByCreatedAtDesc(customerId)
+                .stream()
+                .map(q -> new QueryHistoryDto(
+                        q.getId(),
+                        q.getText(),
+                        q.getResponse(),
+                        q.getSource(),
+                        q.getCreatedAt()
+                ))
+                .toList();
     }
 
     public List<UserQuery> getQueriesByCustomer(UUID customerId) {
