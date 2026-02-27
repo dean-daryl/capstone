@@ -3,6 +3,8 @@ import logging
 import ctranslate2
 from transformers import AutoTokenizer
 
+from app.glossary import get_glossary
+
 logger = logging.getLogger(__name__)
 
 _translator = None
@@ -52,3 +54,20 @@ def translate(text: str, src_lang: str = "eng_Latn", tgt_lang: str = "kin_Latn")
     output_tokens = results[0].hypotheses[0][1:]  # Skip target language prefix
     token_ids = tokenizer.convert_tokens_to_ids(output_tokens)
     return tokenizer.decode(token_ids, skip_special_tokens=True)
+
+
+def translate_with_glossary(
+    text: str,
+    src_lang: str = "eng_Latn",
+    tgt_lang: str = "kin_Latn",
+    extra_terms: list[str] | None = None,
+) -> tuple[str, list[str], str | None]:
+    glossary = get_glossary()
+    if glossary is None:
+        return translate(text, src_lang, tgt_lang), [], None
+
+    protected_text, placeholder_map, detected_subject = glossary.protect(text, extra_terms)
+    translated = translate(protected_text, src_lang, tgt_lang)
+    restored = glossary.restore(translated, placeholder_map)
+    protected_terms = list(placeholder_map.values())
+    return restored, protected_terms, detected_subject

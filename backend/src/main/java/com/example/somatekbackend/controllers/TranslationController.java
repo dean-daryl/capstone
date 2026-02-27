@@ -19,7 +19,7 @@ public class TranslationController {
     public ResponseEntity<ResponseObjectDto> translate(@RequestBody TranslateRequestDto request) {
         try {
             return ResponseEntity.ok(new ResponseObjectDto(
-                    translationService.translate(request.getText(), request.getSrcLang(), request.getTgtLang())
+                    translationService.translate(request.getText(), request.getSrcLang(), request.getTgtLang(), request.getProtectTerms())
             ));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(new ResponseObjectDto(e));

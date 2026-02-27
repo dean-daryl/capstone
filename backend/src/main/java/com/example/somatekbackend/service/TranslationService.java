@@ -12,6 +12,8 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -32,17 +34,23 @@ public class TranslationService {
     }
 
     public TranslateResponseDto translate(String text, String srcLang, String tgtLang) {
+        return translate(text, srcLang, tgtLang, List.of());
+    }
 
-        Map<String, String> request = Map.of(
-                "text", text,
-                "src_lang", srcLang,
-                "tgt_lang", tgtLang
-        );
+    public TranslateResponseDto translate(String text, String srcLang, String tgtLang, List<String> protectTerms) {
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("text", text);
+        request.put("src_lang", srcLang);
+        request.put("tgt_lang", tgtLang);
+        if (protectTerms != null && !protectTerms.isEmpty()) {
+            request.put("protect_terms", protectTerms);
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
 
         try {
             ResponseEntity<TranslateResponseDto> response = restTemplate.postForEntity(
