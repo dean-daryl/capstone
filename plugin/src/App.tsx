@@ -95,7 +95,7 @@ async function translateText(text: string, token: string): Promise<string> {
   });
   const data = await res.json();
   if (!data.status) throw new Error(data.message || "Translation failed");
-  return data.data.translatedText;
+  return data.data.translated_text;
 }
 
 async function simplifyText(text: string, token: string): Promise<string> {
