@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, FileText, ExternalLink, Eye, Loader2 } from 'lucide-react';
-import { queryDocuments } from '../api/ragService';
+import { Send, FileText, ExternalLink, Eye, Loader2, Languages, Sparkles } from 'lucide-react';
+import { queryDocuments, translateText, simplifyText } from '../api/ragService';
 
 const QueryPage = () => {
   const [question, setQuestion] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const [translatedText, setTranslatedText] = useState('');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [simplifiedText, setSimplifiedText] = useState('');
+  const [isSimplifying, setIsSimplifying] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,6 +21,8 @@ const QueryPage = () => {
     setLoading(true);
     setError(null);
     setResult(null);
+    setTranslatedText('');
+    setSimplifiedText('');
 
     try {
       const response = await queryDocuments(question);
@@ -24,6 +31,32 @@ const QueryPage = () => {
       setError(err.response?.data?.message || 'Failed to query documents. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTranslate = async () => {
+    if (!result?.answer) return;
+    setIsTranslating(true);
+    try {
+      const response = await translateText(result.answer);
+      setTranslatedText(response.data.translatedText);
+    } catch (err) {
+      console.error('Translation error:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleSimplify = async () => {
+    if (!result?.answer) return;
+    setIsSimplifying(true);
+    try {
+      const response = await simplifyText(result.answer);
+      setSimplifiedText(response.data.simplifiedText);
+    } catch (err) {
+      console.error('Simplify error:', err);
+    } finally {
+      setIsSimplifying(false);
     }
   };
 
@@ -69,6 +102,39 @@ const QueryPage = () => {
               <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                 {result.answer}
               </p>
+
+              <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <button
+                  onClick={handleTranslate}
+                  disabled={isTranslating}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 disabled:opacity-50 transition-colors"
+                >
+                  {isTranslating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
+                  Translate to Kinyarwanda
+                </button>
+                <button
+                  onClick={handleSimplify}
+                  disabled={isSimplifying}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 transition-colors"
+                >
+                  {isSimplifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  Simplify
+                </button>
+              </div>
+
+              {translatedText && (
+                <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg">
+                  <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-2">Kinyarwanda</p>
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{translatedText}</p>
+                </div>
+              )}
+
+              {simplifiedText && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Simplified</p>
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{simplifiedText}</p>
+                </div>
+              )}
             </div>
 
             {result.sources && result.sources.length > 0 && (
