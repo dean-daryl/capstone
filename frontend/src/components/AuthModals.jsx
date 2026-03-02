@@ -51,7 +51,7 @@ export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
           userId: response.data.userId,
         });
         onClose();
-        navigate('/dashboard');
+        navigate('/dashboard/query');
       } else {
         toast.error(response.message);
       }

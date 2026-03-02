@@ -39,7 +39,7 @@ const QueryPage = () => {
     setIsTranslating(true);
     try {
       const response = await translateText(result.answer);
-      setTranslatedText(response.data.translatedText);
+      setTranslatedText(response.data.translated_text);
     } catch (err) {
       console.error('Translation error:', err);
     } finally {

@@ -5,7 +5,7 @@ import com.example.somatekbackend.dto.OverviewStatsDto;
 import com.example.somatekbackend.models.Stats;
 import com.example.somatekbackend.models.Topic;
 import com.example.somatekbackend.models.UserQuery;
-import com.example.somatekbackend.repository.IRagDocumentRepository;
+import com.example.somatekbackend.service.storage.DocumentMetadataStore;
 import com.example.somatekbackend.repository.IStatsRepository;
 import com.example.somatekbackend.repository.ITopicRepository;
 import com.example.somatekbackend.repository.IUserQueryRepository;
@@ -24,14 +24,14 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class StatsService implements IStatsService {
 
-    private final IRagDocumentRepository ragDocumentRepository;
+    private final DocumentMetadataStore documentMetadataStore;
     private final IUserQueryRepository userQueryRepository;
     private final ITopicRepository topicRepository;
     private final IStatsRepository statsRepository;
 
     @Override
     public OverviewStatsDto getOverviewStats() {
-        long totalDocuments = ragDocumentRepository.count();
+        long totalDocuments = documentMetadataStore.count();
         long totalQueries = userQueryRepository.count();
         double averageSatisfaction = userQueryRepository.findAverageSatisfaction();
         long totalTopics = topicRepository.count();
@@ -41,7 +41,7 @@ public class StatsService implements IStatsService {
 
     @Override
     public OverviewStatsDto getOverviewStatsByCustomerId(UUID customerId) {
-        long totalDocuments = ragDocumentRepository.count();
+        long totalDocuments = documentMetadataStore.count();
         long totalQueries = userQueryRepository.findByCustomerId(customerId).size();
         double averageSatisfaction = userQueryRepository.findAverageSatisfaction();
         long totalTopics = topicRepository.findByCustomerId(customerId).size();
@@ -66,7 +66,7 @@ public class StatsService implements IStatsService {
     }
 
     private DetailedStatsDto buildDetailedStats(List<UserQuery> queries, List<Topic> topics) {
-        long totalDocuments = ragDocumentRepository.count();
+        long totalDocuments = documentMetadataStore.count();
         long totalQueries = queries.size();
         long totalTopics = topics.size();
         double averageSatisfaction = queries.stream()

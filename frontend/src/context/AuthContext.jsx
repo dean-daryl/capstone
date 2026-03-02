@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import apiClient from '../api/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,8 @@ export function AuthProvider({ children }) {
             role: payload.role || localStorage.getItem('role'),
             id: localStorage.getItem('userId'),
           });
+          setLoading(false);
+          return;
         } else {
           clearAuth();
         }
@@ -28,7 +31,18 @@ export function AuthProvider({ children }) {
         clearAuth();
       }
     }
-    setLoading(false);
+    // No valid token — try auto-login (local mode)
+    apiClient.get('auth/auto-login')
+      .then((res) => {
+        const data = res.data?.data;
+        if (data?.token) {
+          login(data);
+        }
+      })
+      .catch(() => {
+        // Not in local mode or backend down — user must login manually
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   function clearAuth() {
@@ -56,7 +70,7 @@ export function AuthProvider({ children }) {
 
   function logout() {
     clearAuth();
-    window.location.href = '/';
+    window.location.href = '/login';
   }
 
   const role = user?.role || null;

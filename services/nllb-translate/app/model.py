@@ -1,7 +1,8 @@
 import logging
+import os
 
 import ctranslate2
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
 
 from app.glossary import get_glossary
 
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 _translator = None
 _tokenizer = None
 
-MODEL_DIR = "/app/model"
+MODEL_DIR = os.environ.get("NLLB_MODEL_DIR", "/app/model")
 
 
 def load_model() -> None:
@@ -18,7 +19,13 @@ def load_model() -> None:
     logger.info("Loading CTranslate2 model from %s ...", MODEL_DIR)
     _translator = ctranslate2.Translator(MODEL_DIR, device="cpu", inter_threads=4)
     logger.info("Loading tokenizer from %s ...", MODEL_DIR)
-    _tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
+    try:
+        _tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
+    except ValueError:
+        # Fallback for models with non-standard tokenizer_config (e.g. TokenizersBackend)
+        tokenizer_file = os.path.join(MODEL_DIR, "tokenizer.json")
+        _tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer_file)
+        logger.info("Loaded tokenizer via PreTrainedTokenizerFast fallback.")
     logger.info("Model and tokenizer loaded successfully.")
 
 

@@ -1,4 +1,3 @@
-cat > somatek/.gitignore << 'EOF'
 # Data directories (contains large files and sensitive data)
 data/
 logs/
@@ -46,6 +45,16 @@ pids
 # Temporary directories
 tmp/
 temp/
-EOF
+
+# Node dependencies
+node_modules/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Spring Boot build output
+backend/src/main/resources/static/
 
 .qodo

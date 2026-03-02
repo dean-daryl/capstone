@@ -5,7 +5,7 @@ import com.example.somatekbackend.dto.LlamaResponse;
 import com.example.somatekbackend.dto.MessageStructure;
 import com.example.somatekbackend.dto.RecentActivityDto;
 import com.example.somatekbackend.models.RecentActivity;
-import com.example.somatekbackend.repository.IRecentActivityRepository;
+import com.example.somatekbackend.service.storage.ActivityStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -35,7 +35,7 @@ public class RecentActivityService implements IRecentActivityService {
     @Value("${llama.apiKey}")
     private String llamaApiKey;
 
-    private final IRecentActivityRepository recentActivityRepository;
+    private final ActivityStore activityStore;
 
     @Override
     public RecentActivity createRecentActivity(RecentActivityDto recentActivityDto, String title) {
@@ -48,22 +48,22 @@ public class RecentActivityService implements IRecentActivityService {
         recentActivity.setCreatedAt(LocalDateTime.now());
         recentActivity.setUpdatedAt(LocalDateTime.now());
 
-        return recentActivityRepository.save(recentActivity);
+        return activityStore.save(recentActivity);
     }
 
     @Override
     public Page<RecentActivityDto> getRecentActivitiesByUserId(String userId, Pageable pageable) {
-        return recentActivityRepository.findByUserId(userId, pageable);
+        return activityStore.findByUserId(userId, pageable);
     }
 
     @Override
     public Page<RecentActivityDto> getRecentActivitiesByUserIdByDateRange(String userId, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
-        return recentActivityRepository.findByUserIdAndDateRange(userId, startDate, endDate, pageable);
+        return activityStore.findByUserIdAndDateRange(userId, startDate, endDate, pageable);
     }
 
     @Override
     public RecentActivity getRecentActivityById(String recentActivityId) {
-        return recentActivityRepository.findById(recentActivityId).orElseThrow(() -> new RuntimeException("Unable to find recent activity"));
+        return activityStore.findById(recentActivityId).orElseThrow(() -> new RuntimeException("Unable to find recent activity"));
     }
 
     private String generateTitle(String text) {

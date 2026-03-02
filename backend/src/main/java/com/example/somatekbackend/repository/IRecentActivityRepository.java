@@ -6,11 +6,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 
 @Repository
+@Profile("!local")
 public interface IRecentActivityRepository extends MongoRepository<RecentActivity, String> {
     @Query(value = "{ 'userId': ?0 }", fields = "{ '_id':1, 'title': 1, 'updatedAt': 1 , 'conversationType' : 1}")
     Page<RecentActivityDto> findByUserId(String userId, Pageable pageable);

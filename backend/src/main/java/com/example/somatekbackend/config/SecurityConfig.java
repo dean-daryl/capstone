@@ -46,8 +46,12 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/login", "/auth/signup", "/auth/grantcode").permitAll()
+                        .requestMatchers("/auth/login", "/auth/signup", "/auth/grantcode", "/auth/auto-login").permitAll()
+                        .requestMatchers("/health").permitAll()
+                        .requestMatchers("/files/**").permitAll()
+                        .requestMatchers("/sync/**").permitAll()
                         .requestMatchers("/public/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/*.js", "/*.css").permitAll()
                         .requestMatchers(HttpMethod.POST, "/technology/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/technology/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/rag/documents").hasAnyRole("TEACHER", "ADMIN")

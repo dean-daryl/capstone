@@ -1,11 +1,12 @@
 import json
 import logging
+import os
 import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-GLOSSARY_PATH = Path("/app/glossary.json")
+GLOSSARY_PATH = Path(os.environ.get("NLLB_GLOSSARY_PATH", "/app/glossary.json"))
 
 _glossary = None
 
