@@ -5,7 +5,7 @@ import com.example.somatekbackend.dto.EDocumentStatus;
 import com.example.somatekbackend.dto.RagQueryRequestDto;
 import com.example.somatekbackend.dto.RagQueryResponseDto;
 import com.example.somatekbackend.models.RagDocument;
-import com.example.somatekbackend.repository.IRagDocumentRepository;
+import com.example.somatekbackend.service.storage.DocumentMetadataStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -40,7 +40,7 @@ public class DocumentService implements IDocumentService {
     private final VectorStore vectorStore;
     private final ChatClient ragChatClient;
     private final TokenTextSplitter tokenTextSplitter;
-    private final IRagDocumentRepository ragDocumentRepository;
+    private final DocumentMetadataStore documentMetadataStore;
     private final IMinioService minioService;
 
     @Value("${rag.search.top-k:8}")
@@ -52,12 +52,12 @@ public class DocumentService implements IDocumentService {
     public DocumentService(VectorStore vectorStore,
                            @Qualifier("ragChatClient") ChatClient ragChatClient,
                            TokenTextSplitter tokenTextSplitter,
-                           IRagDocumentRepository ragDocumentRepository,
+                           DocumentMetadataStore documentMetadataStore,
                            IMinioService minioService) {
         this.vectorStore = vectorStore;
         this.ragChatClient = ragChatClient;
         this.tokenTextSplitter = tokenTextSplitter;
-        this.ragDocumentRepository = ragDocumentRepository;
+        this.documentMetadataStore = documentMetadataStore;
         this.minioService = minioService;
     }
 
@@ -72,11 +72,11 @@ public class DocumentService implements IDocumentService {
         ragDocument.setStatus(EDocumentStatus.UPLOADING);
         ragDocument.setCreatedAt(LocalDateTime.now());
         ragDocument.setUpdatedAt(LocalDateTime.now());
-        ragDocumentRepository.save(ragDocument);
+        ragDocument = documentMetadataStore.save(ragDocument);
 
         try {
             ragDocument.setStatus(EDocumentStatus.PROCESSING);
-            ragDocumentRepository.save(ragDocument);
+            ragDocument = documentMetadataStore.save(ragDocument);
 
             // Store original file in MinIO
             String objectName = ragDocument.getId() + "/" + file.getOriginalFilename();
@@ -110,7 +110,7 @@ public class DocumentService implements IDocumentService {
             ragDocument.setChunkCount(chunks.size());
             ragDocument.setStatus(EDocumentStatus.COMPLETED);
             ragDocument.setUpdatedAt(LocalDateTime.now());
-            ragDocumentRepository.save(ragDocument);
+            documentMetadataStore.save(ragDocument);
 
             return new DocumentUploadResponseDto(
                     ragDocument.getId(),
@@ -124,7 +124,7 @@ public class DocumentService implements IDocumentService {
             ragDocument.setStatus(EDocumentStatus.FAILED);
             ragDocument.setErrorMessage(e.getMessage());
             ragDocument.setUpdatedAt(LocalDateTime.now());
-            ragDocumentRepository.save(ragDocument);
+            documentMetadataStore.save(ragDocument);
 
             throw new RuntimeException("Failed to process document: " + e.getMessage(), e);
         }
@@ -176,7 +176,7 @@ public class DocumentService implements IDocumentService {
             // Populate presigned URL for the source document
             if (documentId != null) {
                 try {
-                    RagDocument ragDoc = ragDocumentRepository.findById(documentId).orElse(null);
+                    RagDocument ragDoc = documentMetadataStore.findById(documentId).orElse(null);
                     if (ragDoc != null && ragDoc.getMinioObjectName() != null) {
                         // Check if object exists in MinIO before generating URL
                         if (minioService.objectExists(ragDoc.getMinioObjectName())) {
@@ -196,12 +196,12 @@ public class DocumentService implements IDocumentService {
 
     @Override
     public List<RagDocument> getAllDocuments() {
-        return ragDocumentRepository.findAllByOrderByCreatedAtDesc();
+        return documentMetadataStore.findAllByOrderByCreatedAtDesc();
     }
 
     @Override
     public RagDocument getDocumentById(String id) {
-        return ragDocumentRepository.findById(id)
+        return documentMetadataStore.findById(id)
                 .orElseThrow(() -> new RuntimeException("Document not found: " + id));
     }
 
@@ -224,7 +224,7 @@ public class DocumentService implements IDocumentService {
         }
 
         // Remove MongoDB record
-        ragDocumentRepository.deleteById(id);
+        documentMetadataStore.deleteById(id);
     }
 
     @Override

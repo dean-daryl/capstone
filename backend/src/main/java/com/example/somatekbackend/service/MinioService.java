@@ -6,6 +6,7 @@ import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,6 +14,7 @@ import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@Profile("!local")
 public class MinioService implements IMinioService {
 
     private static final Logger logger = LoggerFactory.getLogger(MinioService.class);

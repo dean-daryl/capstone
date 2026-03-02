@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 import spacy
@@ -8,7 +9,9 @@ logger = logging.getLogger(__name__)
 _nlp = None
 
 
-def load_model(model_path: str = "/app/model") -> None:
+def load_model(model_path: str = None) -> None:
+    if model_path is None:
+        model_path = os.environ.get("TEXTCAT_MODEL_DIR", "/app/model")
     global _nlp
     logger.info("Loading spaCy model from %s ...", model_path)
     _nlp = spacy.load(model_path)
