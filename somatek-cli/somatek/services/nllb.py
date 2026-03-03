@@ -85,8 +85,7 @@ def start() -> bool:
         print("  Warning: NLLB model not found at models/nllb-kin-ct2/. Translation will be unavailable.")
         return False
 
-    ensure_installed()
-
+    # Dependencies should have been installed during setup
     log_file = LOGS_DIR / "nllb.log"
     print(f"  Starting NLLB (port {NLLB_PORT})...")
 

@@ -76,8 +76,7 @@ def start() -> bool:
         print("  Warning: TextCat model not found at models/textCat/. Classification will be unavailable.")
         return False
 
-    ensure_installed()
-
+    # Dependencies should have been installed during setup
     log_file = LOGS_DIR / "textcat.log"
     print(f"  Starting TextCat (port {TEXTCAT_PORT})...")
 

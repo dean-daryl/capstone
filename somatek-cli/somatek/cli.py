@@ -3,6 +3,17 @@
 import subprocess
 import sys
 import webbrowser
+from pathlib import Path
+
+# Fix for PyInstaller + typer rich issue - set environment variable early
+if getattr(sys, 'frozen', False):
+    import os
+    os.environ['TYPER_DISABLE_RICH'] = '1'
+    # Also disable rich traceback
+    import traceback
+    def _simple_exception_hook(exc_type, exc_value, exc_traceback):
+        traceback.print_exception(exc_type, exc_value, exc_traceback)
+    sys.excepthook = _simple_exception_hook
 
 import typer
 
@@ -15,6 +26,27 @@ app = typer.Typer(
     help="Somatek offline deployment tool for teachers.",
     add_completion=False,
 )
+
+# Version - will be replaced by PyInstaller during build
+__version__ = "0.1.0"
+
+
+@app.callback()
+def main() -> None:
+    """Somatek CLI - Offline-first deployment tool for teachers."""
+    pass
+
+
+@app.command()
+def version() -> None:
+    """Show Somatek CLI version."""
+    typer.echo(f"Somatek CLI v{__version__}")
+    
+    # Show bundle info if running as bundled binary
+    if getattr(sys, 'frozen', False):
+        typer.echo("Running as self-contained binary")
+    else:
+        typer.echo("Running from Python source")
 
 
 @app.command()
@@ -49,37 +81,37 @@ def setup(
     typer.echo("Setting up Somatek...\n")
 
     # 1. Create directory structure
-    typer.echo("[1/6] Creating directory structure...")
+    typer.echo("[1/8] Creating directory structure...")
     ensure_dirs()
     cfg = get_or_create_config(email=email, password=password)
     typer.echo("  Done.\n")
 
     # 2. Check / install Ollama
-    typer.echo("[2/6] Checking Ollama...")
+    typer.echo("[2/8] Checking Ollama...")
     ollama.ensure_installed()
     ollama.start()
     typer.echo("")
 
     # 3. Pull Ollama models
-    typer.echo("[3/6] Pulling AI models (this may take a while)...")
+    typer.echo("[3/8] Pulling AI models (this may take a while)...")
     ollama.pull_models()
     typer.echo("")
 
     # 4. Download portable JRE
-    typer.echo("[4/6] Downloading Java runtime...")
+    typer.echo("[4/8] Downloading Java runtime...")
     download_jre()
     typer.echo("")
 
     # 5. Build frontend + backend JAR (or locate existing)
     if skip_build or jar:
-        typer.echo("[5/6] Installing backend...")
+        typer.echo("[5/8] Installing backend...")
         try:
             locate_and_install_jar(jar_path=jar)
         except FileNotFoundError as e:
             typer.echo(f"\n  {e}")
             raise typer.Exit(1)
     else:
-        typer.echo("[5/6] Building frontend + backend...")
+        typer.echo("[5/8] Building frontend + backend...")
         try:
             from somatek.builder import full_build
             import shutil
@@ -99,10 +131,21 @@ def setup(
                 raise typer.Exit(1)
 
     # 6. Install ChromaDB
-    typer.echo("\n[6/6] Installing ChromaDB...")
+    typer.echo("\n[6/8] Installing ChromaDB...")
     chroma.ensure_installed()
+    typer.echo("  ChromaDB installed.")
 
-    typer.echo("\nSetup complete! Run 'somatek start' to launch.")
+    # 7. Pre-install TextCat dependencies
+    typer.echo("\n[7/8] Installing TextCat dependencies...")
+    textcat.ensure_installed()
+    typer.echo("  TextCat ready.")
+
+    # 8. Pre-install NLLB dependencies
+    typer.echo("\n[8/8] Installing NLLB dependencies...")
+    nllb.ensure_installed()
+    typer.echo("  NLLB ready.")
+
+    typer.echo("\n✅ Setup complete! Run 'somatek start' to launch.")
 
 
 @app.command()
@@ -143,7 +186,6 @@ def start(
 
     # 1. ChromaDB
     typer.echo("[1/5] ChromaDB...")
-    chroma.ensure_installed()
     chroma.start()
 
     # 2. Ollama

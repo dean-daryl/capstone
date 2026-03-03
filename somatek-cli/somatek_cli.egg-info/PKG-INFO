@@ -5,3 +5,8 @@ Summary: CLI tool for offline-first Somatek deployment
 Requires-Python: >=3.9
 Requires-Dist: typer[all]>=0.9.0
 Requires-Dist: httpx>=0.25.0
+Provides-Extra: build
+Requires-Dist: pyinstaller>=6.0; extra == "build"
+Provides-Extra: dev
+Requires-Dist: pyinstaller>=6.0; extra == "dev"
+Requires-Dist: pytest>=7.0; extra == "dev"
