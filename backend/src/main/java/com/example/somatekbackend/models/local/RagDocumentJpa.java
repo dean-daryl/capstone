@@ -34,6 +34,9 @@ public class RagDocumentJpa {
 
     private String minioObjectName;
 
+    @Column(name = "course_id")
+    private String courseId;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

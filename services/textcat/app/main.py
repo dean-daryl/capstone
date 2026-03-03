@@ -13,12 +13,19 @@ app = FastAPI(title="TextCat Service", version="1.0.0")
 
 @app.on_event("startup")
 def startup():
-    load_model()
+    try:
+        load_model()
+    except Exception as e:
+        logger.warning("TextCat model not available at startup: %s. Service will return empty results.", e)
 
 
 @app.post("/classify", response_model=ClassifyResponse)
 def classify_text(request: ClassifyRequest):
-    results = classify(request.text, request.threshold)
+    try:
+        results = classify(request.text, request.threshold)
+    except RuntimeError:
+        logger.warning("TextCat model not loaded — returning empty categories.")
+        results = []
     snippet = request.text[:200] if len(request.text) > 200 else request.text
     return ClassifyResponse(
         categories=[CategoryScore(**r) for r in results],

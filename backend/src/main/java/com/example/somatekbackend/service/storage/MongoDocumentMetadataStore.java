@@ -51,4 +51,9 @@ public class MongoDocumentMetadataStore implements DocumentMetadataStore {
     public long count() {
         return repository.count();
     }
+
+    @Override
+    public List<RagDocument> findByCourseId(String courseId) {
+        return repository.findByCourseId(courseId);
+    }
 }

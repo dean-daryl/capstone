@@ -9,7 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface IDocumentService {
-    DocumentUploadResponseDto uploadDocument(MultipartFile file);
+    DocumentUploadResponseDto uploadDocument(MultipartFile file, String courseId);
 
     RagQueryResponseDto queryDocuments(RagQueryRequestDto request);
 
@@ -20,4 +20,8 @@ public interface IDocumentService {
     void deleteDocument(String id);
 
     String getDocumentViewUrl(String id);
+
+    List<RagDocument> getDocumentsByCourseId(String courseId);
+
+    void deleteDocumentsByCourseId(String courseId);
 }

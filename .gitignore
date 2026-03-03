@@ -1,6 +1,7 @@
 # Data directories (contains large files and sensitive data)
 data/
 logs/
+backups/
 
 # ML model files (too large for git)
 /models

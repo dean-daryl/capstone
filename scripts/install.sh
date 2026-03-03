@@ -15,7 +15,7 @@ NC='\033[0m'
 # Default values
 VERSION=""
 LOCATION="/usr/local/bin"
-REPO="dean-daryl/somatek"
+REPO="dean-daryl/capstone"
 BINARY_NAME="somatek"
 
 # Parse arguments
@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --version    Specific version to install (default: latest)"
             echo "  --location   Installation directory (default: /usr/local/bin)"
-            echo "  --repo       GitHub repository (default: dean-daryl/somatek)"
+            echo "  --repo       GitHub repository (default: dean-daryl/capstone)"
             echo "  -h, --help   Show this help message"
             exit 0
             ;;

@@ -1,0 +1,274 @@
+# ============================================================
+# SomaTek Production Nginx Configuration
+# SSL termination + reverse proxy + SPA static file serving
+# ============================================================
+
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 256;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" $request_time';
+    access_log /var/log/nginx/access.log main;
+
+    sendfile        on;
+    tcp_nopush      on;
+    keepalive_timeout 65;
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml;
+
+    # Max upload size — matches Spring Boot's 50MB limit
+    client_max_body_size 50M;
+
+    # -----------------------------------------------------------
+    # Rate limiting zones
+    # -----------------------------------------------------------
+    limit_req_zone $binary_remote_addr zone=auth:10m rate=3r/s;
+    limit_req_zone $binary_remote_addr zone=ml:10m rate=2r/s;
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+
+    # -----------------------------------------------------------
+    # Upstream definitions
+    # -----------------------------------------------------------
+    upstream backend {
+        server java-backend:8080;
+    }
+
+    upstream minio_upstream {
+        server minio:9000;
+    }
+
+    # -----------------------------------------------------------
+    # HTTP → HTTPS redirect (with Let's Encrypt challenge support)
+    # -----------------------------------------------------------
+    server {
+        listen 80;
+        server_name _;
+
+        # Let's Encrypt ACME challenge
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    # -----------------------------------------------------------
+    # HTTPS server
+    # -----------------------------------------------------------
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name _;
+
+        # SSL certificates (mounted from host)
+        ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+        # TLS settings
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 10m;
+
+        # -----------------------------------------------------------
+        # Security headers
+        # -----------------------------------------------------------
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        # -----------------------------------------------------------
+        # Auth endpoints (rate limited: 3r/s)
+        # -----------------------------------------------------------
+        location /auth/ {
+            limit_req zone=auth burst=5 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # -----------------------------------------------------------
+        # ML-heavy endpoints (rate limited: 2r/s, extended timeouts)
+        # -----------------------------------------------------------
+        location /simplify {
+            limit_req zone=ml burst=3 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+        }
+
+        location /translate {
+            limit_req zone=ml burst=3 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 120s;
+            proxy_send_timeout 120s;
+        }
+
+        # -----------------------------------------------------------
+        # RAG endpoints (extended timeouts for query)
+        # -----------------------------------------------------------
+        location /rag/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+        }
+
+        # -----------------------------------------------------------
+        # Other API endpoints proxied to backend
+        # -----------------------------------------------------------
+        location /stats/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /users/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /files/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /technology/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /sync/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /recent-activity/ {
+            limit_req zone=api burst=10 nodelay;
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /health {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /actuator/ {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # -----------------------------------------------------------
+        # MinIO document downloads
+        # -----------------------------------------------------------
+        location /minio-files/ {
+            limit_req zone=api burst=10 nodelay;
+            rewrite ^/minio-files/(.*) /somatek-documents/$1 break;
+            proxy_pass http://minio_upstream;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # -----------------------------------------------------------
+        # API docs (Swagger)
+        # -----------------------------------------------------------
+        location /v3/api-docs/ {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /swagger-ui/ {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /swagger-ui.html {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # -----------------------------------------------------------
+        # React SPA — static files with client-side routing fallback
+        # -----------------------------------------------------------
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+            try_files $uri $uri/ /index.html;
+
+            # Cache static assets
+            location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+                expires 7d;
+                add_header Cache-Control "public, immutable";
+            }
+        }
+    }
+}

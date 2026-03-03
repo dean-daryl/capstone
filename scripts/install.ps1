@@ -5,7 +5,7 @@
 param(
     [string]$Version = "",
     [string]$Location = "",
-    [string]$Repo = "dean-daryl/somatek",
+    [string]$Repo = "dean-daryl/capstone",
     [switch]$Help
 )
 
@@ -19,7 +19,7 @@ if ($Help) {
     Write-Host "Options:"
     Write-Host "  -Version    Specific version to install (default: latest)"
     Write-Host "  -Location   Installation directory (default: %USERPROFILE%\somatek)"
-    Write-Host "  -Repo       GitHub repository (default: dean-daryl/somatek)"
+    Write-Host "  -Repo       GitHub repository (default: dean-daryl/capstone)"
     Write-Host "  -Help       Show this help message"
     exit 0
 }

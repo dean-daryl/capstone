@@ -29,6 +29,6 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:8080 https://api.groq.com"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:8080 https://*.yourdomain.com https://api.groq.com"
   }
 }

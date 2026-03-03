@@ -5,9 +5,12 @@ export const queryDocuments = async (question) => {
   return response.data;
 };
 
-export const uploadDocument = async (file) => {
+export const uploadDocument = async (file, courseId) => {
   const formData = new FormData();
   formData.append("file", file);
+  if (courseId) {
+    formData.append("courseId", courseId);
+  }
   const response = await apiClient.post("/rag/documents", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
@@ -16,6 +19,11 @@ export const uploadDocument = async (file) => {
 
 export const getDocuments = async () => {
   const response = await apiClient.get("/rag/documents");
+  return response.data;
+};
+
+export const getDocumentById = async (id) => {
+  const response = await apiClient.get(`/rag/documents/${id}`);
   return response.data;
 };
 

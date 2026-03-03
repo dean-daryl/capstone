@@ -24,6 +24,7 @@ public class RagDocument {
     private String errorMessage;
     private List<String> vectorIds;
     private String minioObjectName;
+    private String courseId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -61,6 +61,11 @@ public class JpaDocumentMetadataStore implements DocumentMetadataStore {
         return repository.count();
     }
 
+    @Override
+    public List<RagDocument> findByCourseId(String courseId) {
+        return repository.findByCourseId(courseId).stream().map(this::toMongo).collect(Collectors.toList());
+    }
+
     private RagDocumentJpa toJpa(RagDocument doc) {
         RagDocumentJpa jpa = new RagDocumentJpa();
         jpa.setId(doc.getId());
@@ -71,6 +76,7 @@ public class JpaDocumentMetadataStore implements DocumentMetadataStore {
         jpa.setStatus(doc.getStatus());
         jpa.setErrorMessage(doc.getErrorMessage());
         jpa.setMinioObjectName(doc.getMinioObjectName());
+        jpa.setCourseId(doc.getCourseId());
         jpa.setCreatedAt(doc.getCreatedAt());
         jpa.setUpdatedAt(doc.getUpdatedAt());
         if (doc.getVectorIds() != null) {
@@ -93,6 +99,7 @@ public class JpaDocumentMetadataStore implements DocumentMetadataStore {
         doc.setStatus(jpa.getStatus());
         doc.setErrorMessage(jpa.getErrorMessage());
         doc.setMinioObjectName(jpa.getMinioObjectName());
+        doc.setCourseId(jpa.getCourseId());
         doc.setCreatedAt(jpa.getCreatedAt());
         doc.setUpdatedAt(jpa.getUpdatedAt());
         if (jpa.getVectorIdsJson() != null) {

@@ -14,8 +14,12 @@ def load_model(model_path: str = None) -> None:
         model_path = os.environ.get("TEXTCAT_MODEL_DIR", "/app/model")
     global _nlp
     logger.info("Loading spaCy model from %s ...", model_path)
-    _nlp = spacy.load(model_path)
-    logger.info("Model loaded. Labels: %s", get_labels())
+    try:
+        _nlp = spacy.load(model_path)
+        logger.info("Model loaded. Labels: %s", get_labels())
+    except Exception as e:
+        _nlp = None
+        logger.warning("Failed to load textcat model from %s: %s. Service will return empty results.", model_path, e)
 
 
 def get_nlp():

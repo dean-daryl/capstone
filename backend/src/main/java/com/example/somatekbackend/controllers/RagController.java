@@ -32,9 +32,11 @@ public class RagController {
     private final UserQueryService userQueryService;
 
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseObjectDto> uploadDocument(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<ResponseObjectDto> uploadDocument(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "courseId", required = false) String courseId) {
         try {
-            return ResponseEntity.ok(new ResponseObjectDto(documentService.uploadDocument(file)));
+            return ResponseEntity.ok(new ResponseObjectDto(documentService.uploadDocument(file, courseId)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ResponseObjectDto(e));
         }
@@ -85,6 +87,15 @@ public class RagController {
         try {
             List<QueryHistoryDto> history = userQueryService.getQueryHistory(user.getCustomerId());
             return ResponseEntity.ok(new ResponseObjectDto(history));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new ResponseObjectDto(e));
+        }
+    }
+
+    @GetMapping("/documents/course/{courseId}")
+    public ResponseEntity<ResponseObjectDto> getDocumentsByCourse(@PathVariable String courseId) {
+        try {
+            return ResponseEntity.ok(new ResponseObjectDto(documentService.getDocumentsByCourseId(courseId)));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(new ResponseObjectDto(e));
         }

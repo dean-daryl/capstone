@@ -14,4 +14,6 @@ public interface IRagDocumentRepository extends MongoRepository<RagDocument, Str
     List<RagDocument> findByStatus(EDocumentStatus status);
 
     List<RagDocument> findAllByOrderByCreatedAtDesc();
+
+    List<RagDocument> findByCourseId(String courseId);
 }

@@ -139,12 +139,12 @@ jobs:
 
           ### Linux / macOS
           ```bash
-          curl -fsSL https://raw.githubusercontent.com/dean-daryl/somatek/main/scripts/install-nllb.sh | bash
+          curl -fsSL https://raw.githubusercontent.com/dean-daryl/capstone/main/scripts/install-nllb.sh | bash
           ```
 
           Or specify a version:
           ```bash
-          curl -fsSL https://raw.githubusercontent.com/dean-daryl/somatek/main/scripts/install-nllb.sh | bash -s -- --version nllb-v0.1.0
+          curl -fsSL https://raw.githubusercontent.com/dean-daryl/capstone/main/scripts/install-nllb.sh | bash -s -- --version nllb-v0.1.0
           ```
 
           ### Windows

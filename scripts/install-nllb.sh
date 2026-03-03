@@ -16,7 +16,7 @@ NC='\033[0m'
 VERSION=""
 LOCATION="/usr/local/bin"
 MODEL_DIR="$HOME/.somatek/models/nllb-kin-ct2"
-REPO="dean-daryl/somatek"
+REPO="dean-daryl/capstone"
 BINARY_NAME="somatek-nllb"
 SKIP_MODEL=false
 
@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --location     Binary installation directory (default: /usr/local/bin)"
             echo "  --model-dir    Model installation directory (default: ~/.somatek/models/nllb-kin-ct2)"
             echo "  --skip-model   Skip downloading the model files"
-            echo "  --repo         GitHub repository (default: dean-daryl/somatek)"
+            echo "  --repo         GitHub repository (default: dean-daryl/capstone)"
             echo "  -h, --help     Show this help message"
             exit 0
             ;;

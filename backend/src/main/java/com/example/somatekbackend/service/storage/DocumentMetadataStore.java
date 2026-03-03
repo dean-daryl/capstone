@@ -20,4 +20,6 @@ public interface DocumentMetadataStore {
     void deleteById(String id);
 
     long count();
+
+    List<RagDocument> findByCourseId(String courseId);
 }

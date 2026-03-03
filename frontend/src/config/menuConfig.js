@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   MessageSquare,
-  FileText,
   Users,
   BookOpen,
   BarChart3,
@@ -20,7 +19,6 @@ const menuConfig = {
   TEACHER: [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
     { label: "Ask AI", icon: MessageSquare, path: "/dashboard/query" },
-    { label: "Documents", icon: FileText, path: "/dashboard/documents" },
     { label: "Courses", icon: BookOpen, path: "/dashboard/courses" },
     { label: "Analytics", icon: BarChart3, path: "/dashboard" },
     { label: "Profile", icon: UserCircle, path: "/dashboard/profile" },
@@ -29,9 +27,8 @@ const menuConfig = {
   ADMIN: [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
     { label: "Ask AI", icon: MessageSquare, path: "/dashboard/query" },
-    { label: "Documents", icon: FileText, path: "/dashboard/documents" },
-    { label: "Users", icon: Users, path: "/dashboard/users" },
     { label: "Courses", icon: BookOpen, path: "/dashboard/courses" },
+    { label: "Users", icon: Users, path: "/dashboard/users" },
     { label: "Analytics", icon: BarChart3, path: "/dashboard" },
     { label: "Settings", icon: Settings, path: "/dashboard/settings" },
   ],

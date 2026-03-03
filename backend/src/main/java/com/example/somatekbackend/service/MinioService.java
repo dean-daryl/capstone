@@ -1,8 +1,6 @@
 package com.example.somatekbackend.service;
 
 import io.minio.*;
-import io.minio.errors.MinioException;
-import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,8 +8,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.concurrent.TimeUnit;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Service
 @Profile("!local")
@@ -52,6 +54,24 @@ public class MinioService implements IMinioService {
         }
     }
 
+    @Override
+    public void uploadFile(String objectName, byte[] data, String contentType, long size) {
+        try (InputStream inputStream = new ByteArrayInputStream(data)) {
+            ensureBucketExists();
+            setBucketPolicyPublic();
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(objectName)
+                    .stream(inputStream, size, -1)
+                    .contentType(contentType)
+                    .build());
+            logger.info("Uploaded file to MinIO: {}", objectName);
+        } catch (Exception e) {
+            logger.error("Failed to upload file to MinIO: {}", objectName, e);
+            throw new RuntimeException("Failed to upload file to MinIO: " + e.getMessage(), e);
+        }
+    }
+
     private void ensureBucketExists() throws Exception {
         boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
         if (!exists) {
@@ -81,32 +101,17 @@ public class MinioService implements IMinioService {
 
     @Override
     public String getPresignedUrl(String objectName) {
-        try {
-            // First check if object exists
-            if (!objectExists(objectName)) {
-                throw new RuntimeException("Object not found: " + objectName);
-            }
-
-            // Use maximum expiry (7 days = 604800 seconds) for near-permanent access
-            String url = minioClient.getPresignedObjectUrl(
-                    GetPresignedObjectUrlArgs.builder()
-                            .method(Method.GET)
-                            .bucket(bucketName)
-                            .object(objectName)
-                            .expiry(7, TimeUnit.DAYS)
-                            .build());
-
-            // Replace internal Docker hostname with the browser-accessible public URL
-            if (!endpoint.equals(publicUrl)) {
-                url = url.replace(endpoint, publicUrl);
-            }
-
-            return url;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to generate presigned URL: " + e.getMessage(), e);
+        if (!objectExists(objectName)) {
+            throw new RuntimeException("Object not found: " + objectName);
         }
+
+        // Bucket has public read policy, so use a direct URL instead of a presigned one.
+        // This avoids SignatureDoesNotMatch errors when endpoint != publicUrl (e.g. Docker).
+        String encodedPath = Arrays.stream(objectName.split("/"))
+                .map(segment -> URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20"))
+                .collect(Collectors.joining("/"));
+
+        return publicUrl + "/" + bucketName + "/" + encodedPath;
     }
 
     /**

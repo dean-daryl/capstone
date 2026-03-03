@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -35,6 +36,19 @@ public class LocalFileStorageService implements IMinioService {
     @Override
     public void uploadFile(String objectName, MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
+            Path targetPath = baseDir.resolve(objectName);
+            Files.createDirectories(targetPath.getParent());
+            Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            logger.info("Stored file locally: {}", targetPath);
+        } catch (IOException e) {
+            logger.error("Failed to store file locally: {}", objectName, e);
+            throw new RuntimeException("Failed to store file: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void uploadFile(String objectName, byte[] data, String contentType, long size) {
+        try (InputStream inputStream = new ByteArrayInputStream(data)) {
             Path targetPath = baseDir.resolve(objectName);
             Files.createDirectories(targetPath.getParent());
             Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);

@@ -14,4 +14,6 @@ public interface IRagDocumentJpaRepository extends JpaRepository<RagDocumentJpa,
     List<RagDocumentJpa> findByStatus(EDocumentStatus status);
 
     List<RagDocumentJpa> findAllByOrderByCreatedAtDesc();
+
+    List<RagDocumentJpa> findByCourseId(String courseId);
 }

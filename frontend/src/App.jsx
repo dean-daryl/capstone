@@ -13,6 +13,7 @@ import ProfilePage from './views/ProfilePage';
 import SettingsPage from './views/SettingsPage';
 import UsersPage from './views/UsersPage';
 import CoursesPage from './views/CoursesPage';
+import CourseDetailPage from './views/CourseDetailPage';
 
 function App() {
   return (
@@ -49,6 +50,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['TEACHER', 'ADMIN']}>
                     <CoursesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="courses/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['TEACHER', 'ADMIN']}>
+                    <CourseDetailPage />
                   </ProtectedRoute>
                 }
               />

@@ -11,7 +11,7 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 import java.io.IOException;
 
 @Configuration
-@Profile("local")
+@Profile({"local", "production", "staging", "dev"})
 public class SpaWebConfig implements WebMvcConfigurer {
 
     @Override

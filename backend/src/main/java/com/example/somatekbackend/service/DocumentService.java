@@ -9,14 +9,12 @@ import com.example.somatekbackend.service.storage.DocumentMetadataStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,11 +35,19 @@ public class DocumentService implements IDocumentService {
             "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     );
 
+    private static final String SYSTEM_PROMPT = """
+            You are a helpful assistant that explains technical documents in simple English.
+            Always respond in English. Translate any non-English text to English.
+            Explain concepts in your own words — never copy text verbatim.
+            Only use information from the provided context. If no relevant context exists, say so.
+            """;
+
     private final VectorStore vectorStore;
-    private final ChatClient ragChatClient;
+    private final ChatClient chatClient;
     private final TokenTextSplitter tokenTextSplitter;
     private final DocumentMetadataStore documentMetadataStore;
     private final IMinioService minioService;
+    private final DocumentProcessingService documentProcessingService;
 
     @Value("${rag.search.top-k:8}")
     private int topK;
@@ -50,83 +56,76 @@ public class DocumentService implements IDocumentService {
     private double similarityThreshold;
 
     public DocumentService(VectorStore vectorStore,
-                           @Qualifier("ragChatClient") ChatClient ragChatClient,
+                           ChatModel chatModel,
                            TokenTextSplitter tokenTextSplitter,
                            DocumentMetadataStore documentMetadataStore,
-                           IMinioService minioService) {
+                           IMinioService minioService,
+                           DocumentProcessingService documentProcessingService) {
         this.vectorStore = vectorStore;
-        this.ragChatClient = ragChatClient;
+        this.chatClient = ChatClient.builder(chatModel).defaultSystem(SYSTEM_PROMPT).build();
         this.tokenTextSplitter = tokenTextSplitter;
         this.documentMetadataStore = documentMetadataStore;
         this.minioService = minioService;
+        this.documentProcessingService = documentProcessingService;
     }
 
     @Override
-    public DocumentUploadResponseDto uploadDocument(MultipartFile file) {
+    public DocumentUploadResponseDto uploadDocument(MultipartFile file, String courseId) {
         validateFileType(file);
 
+        // Read file bytes into memory before the request ends
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read file bytes: " + e.getMessage(), e);
+        }
+
+        String filename = file.getOriginalFilename();
+        String contentType = file.getContentType();
+        long fileSize = file.getSize();
+
+        // Create document record with UPLOADING status
         RagDocument ragDocument = new RagDocument();
-        ragDocument.setFilename(file.getOriginalFilename());
-        ragDocument.setContentType(file.getContentType());
-        ragDocument.setFileSizeBytes(file.getSize());
+        ragDocument.setFilename(filename);
+        ragDocument.setContentType(contentType);
+        ragDocument.setFileSizeBytes(fileSize);
         ragDocument.setStatus(EDocumentStatus.UPLOADING);
+        ragDocument.setCourseId(courseId);
         ragDocument.setCreatedAt(LocalDateTime.now());
         ragDocument.setUpdatedAt(LocalDateTime.now());
         ragDocument = documentMetadataStore.save(ragDocument);
 
         try {
-            ragDocument.setStatus(EDocumentStatus.PROCESSING);
-            ragDocument = documentMetadataStore.save(ragDocument);
-
-            // Store original file in MinIO
-            String objectName = ragDocument.getId() + "/" + file.getOriginalFilename();
-            minioService.uploadFile(objectName, file);
+            // Store original file in MinIO (sync — fast, just a file copy)
+            String objectName = ragDocument.getId() + "/" + filename;
+            minioService.uploadFile(objectName, fileBytes, contentType, fileSize);
             ragDocument.setMinioObjectName(objectName);
 
-            // Parse file with Tika
-            TikaDocumentReader reader = new TikaDocumentReader(
-                    new InputStreamResource(file.getInputStream()));
-            List<Document> documents = reader.get();
-
-            // Chunk documents
-            List<Document> chunks = tokenTextSplitter.apply(documents);
-
-            // Add metadata to each chunk
-            for (Document chunk : chunks) {
-                chunk.getMetadata().put("documentId", ragDocument.getId());
-                chunk.getMetadata().put("filename", ragDocument.getFilename());
-            }
-
-            // Store in vector store (auto-embeds via Ollama and stores in Qdrant)
-            vectorStore.add(chunks);
-
-            // Collect vector IDs
-            List<String> vectorIds = new ArrayList<>();
-            for (Document chunk : chunks) {
-                vectorIds.add(chunk.getId());
-            }
-
-            ragDocument.setVectorIds(vectorIds);
-            ragDocument.setChunkCount(chunks.size());
-            ragDocument.setStatus(EDocumentStatus.COMPLETED);
+            // Set status to PROCESSING before handing off to async
+            ragDocument.setStatus(EDocumentStatus.PROCESSING);
             ragDocument.setUpdatedAt(LocalDateTime.now());
-            documentMetadataStore.save(ragDocument);
+            ragDocument = documentMetadataStore.save(ragDocument);
+
+            // Delegate heavy processing (Tika + chunking + embedding) to async service
+            documentProcessingService.processDocument(
+                    ragDocument.getId(), fileBytes, filename, contentType);
 
             return new DocumentUploadResponseDto(
                     ragDocument.getId(),
                     ragDocument.getFilename(),
                     ragDocument.getStatus(),
-                    ragDocument.getChunkCount(),
-                    "Document uploaded and processed successfully"
+                    0,
+                    "Document uploaded — processing in background"
             );
         } catch (Exception e) {
-            logger.error("Failed to process document: {}", file.getOriginalFilename(), e);
+            logger.error("Failed to upload document: {}", filename, e);
             ragDocument.setStatus(EDocumentStatus.FAILED);
             ragDocument.setErrorMessage(e.getMessage());
             ragDocument.setUpdatedAt(LocalDateTime.now());
             documentMetadataStore.save(ragDocument);
 
-            throw new RuntimeException("Failed to process document: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to upload document: " + e.getMessage(), e);
         }
     }
 
@@ -134,26 +133,7 @@ public class DocumentService implements IDocumentService {
     public RagQueryResponseDto queryDocuments(RagQueryRequestDto request) {
         String question = request.getQuestion();
 
-        // First, check what the vector store actually returns (without threshold for debugging)
-        List<Document> debugDocs = vectorStore.similaritySearch(
-                SearchRequest.builder()
-                        .query(question)
-                        .topK(topK)
-                        .similarityThreshold(0.0)
-                        .build());
-        logger.info("Query: '{}' - Found {} documents with no threshold filter", question, debugDocs.size());
-        for (Document doc : debugDocs) {
-            logger.info("  -> score={}, text={}...", doc.getMetadata().get("distance"),
-                    doc.getText().substring(0, Math.min(100, doc.getText().length())));
-        }
-
-        // Use the RAG ChatClient (QuestionAnswerAdvisor handles embed -> search -> augment -> LLM)
-        String answer = ragChatClient.prompt()
-                .user(question)
-                .call()
-                .content();
-
-        // Separately retrieve source chunks for reference
+        // Single similarity search — reused for both LLM context and source references
         List<Document> relevantDocs = vectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(question)
@@ -161,6 +141,29 @@ public class DocumentService implements IDocumentService {
                         .similarityThreshold(similarityThreshold)
                         .build());
 
+        logger.info("Query: '{}' - Found {} relevant chunks", question, relevantDocs.size());
+
+        // Build context from retrieved chunks
+        StringBuilder context = new StringBuilder();
+        for (Document doc : relevantDocs) {
+            context.append(doc.getText()).append("\n\n");
+        }
+
+        // Single LLM call with manually constructed prompt
+        String userPrompt = """
+                Context from documents:
+                %s
+
+                User question: %s
+
+                Explain the answer in simple, clear English:""".formatted(context.toString(), question);
+
+        String answer = chatClient.prompt()
+                .user(userPrompt)
+                .call()
+                .content();
+
+        // Build source references from the same search results (no extra embedding call)
         List<RagQueryResponseDto.SourceChunk> sources = new ArrayList<>();
         for (Document doc : relevantDocs) {
             RagQueryResponseDto.SourceChunk source = new RagQueryResponseDto.SourceChunk();
@@ -173,15 +176,11 @@ public class DocumentService implements IDocumentService {
                 source.setScore(((Number) score).doubleValue());
             }
 
-            // Populate presigned URL for the source document
             if (documentId != null) {
                 try {
                     RagDocument ragDoc = documentMetadataStore.findById(documentId).orElse(null);
                     if (ragDoc != null && ragDoc.getMinioObjectName() != null) {
-                        // Check if object exists in MinIO before generating URL
-                        if (minioService.objectExists(ragDoc.getMinioObjectName())) {
-                            source.setDocumentUrl(minioService.getPresignedUrl(ragDoc.getMinioObjectName()));
-                        }
+                        source.setDocumentUrl(minioService.getPresignedUrl(ragDoc.getMinioObjectName()));
                     }
                 } catch (Exception e) {
                     logger.warn("Could not generate presigned URL for document {}: {}", documentId, e.getMessage());
@@ -237,6 +236,19 @@ public class DocumentService implements IDocumentService {
             throw new RuntimeException("Document file not found in storage: " + ragDocument.getFilename());
         }
         return minioService.getPresignedUrl(ragDocument.getMinioObjectName());
+    }
+
+    @Override
+    public List<RagDocument> getDocumentsByCourseId(String courseId) {
+        return documentMetadataStore.findByCourseId(courseId);
+    }
+
+    @Override
+    public void deleteDocumentsByCourseId(String courseId) {
+        List<RagDocument> documents = documentMetadataStore.findByCourseId(courseId);
+        for (RagDocument doc : documents) {
+            deleteDocument(doc.getId());
+        }
     }
 
     private void validateFileType(MultipartFile file) {
