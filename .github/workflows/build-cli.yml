@@ -25,15 +25,12 @@ jobs:
           - os: ubuntu-latest
             target: linux
             arch: x64
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             target: linux
             arch: arm64
           - os: macos-latest
             target: macos
             arch: arm64
-          - os: macos-13  # Intel Mac
-            target: macos
-            arch: x64
           - os: windows-latest
             target: windows
             arch: x64
@@ -117,22 +114,25 @@ jobs:
           # Rename binary to include platform info
           mv dist/somatek.exe dist/somatek-windows-x64.exe
 
-      - name: Create release artifacts
+      - name: Create release artifacts (Unix)
+        if: runner.os != 'Windows'
         working-directory: somatek-cli
         run: |
           mkdir -p release
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            cp dist/somatek-windows-x64.exe release/
-            # Create checksum
-            cd release
-            certutil -hashfile somatek-windows-x64.exe SHA256 | findstr /i "sha256" > somatek-windows-x64.exe.sha256
-          else
-            cp dist/somatek-${{ matrix.target }}-${{ matrix.arch }} release/
-            # Create checksum
-            cd release
-            sha256sum somatek-${{ matrix.target }}-${{ matrix.arch }} > somatek-${{ matrix.target }}-${{ matrix.arch }}.sha256
-          fi
+          cp dist/somatek-${{ matrix.target }}-${{ matrix.arch }} release/
+          cd release
+          sha256sum somatek-${{ matrix.target }}-${{ matrix.arch }} > somatek-${{ matrix.target }}-${{ matrix.arch }}.sha256
         shell: bash
+
+      - name: Create release artifacts (Windows)
+        if: runner.os == 'Windows'
+        working-directory: somatek-cli
+        run: |
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item dist/somatek-windows-x64.exe release/
+          $hash = (Get-FileHash release/somatek-windows-x64.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  somatek-windows-x64.exe" | Out-File -Encoding ascii release/somatek-windows-x64.exe.sha256
+        shell: pwsh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
