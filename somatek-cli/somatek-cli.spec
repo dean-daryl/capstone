@@ -97,8 +97,6 @@ hiddenimports = [
     "sqlite3",
     "multiprocessing",
     "concurrent.futures",
-    "pkg_resources",
-    "setuptools",
     "numpy",
 ]
 
@@ -136,6 +134,10 @@ excludedmodules = [
     "scipy",           # ~30 MB - Scientific computing (optional)
     "networkx",        # ~10 MB - Graph library
     
+    # Broken with setuptools 70+ in PyInstaller
+    "pkg_resources",
+    "setuptools",
+
     # Optional features not needed
     "gevent",          # ~8 MB - Async library
     # "pygments",      # ~5 MB - Syntax highlighting - KEEPING for typer rich

@@ -74,8 +74,8 @@ jobs:
       - name: Install Python dependencies
         working-directory: somatek-cli
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install pyinstaller
+          python -m pip install --upgrade pip wheel
+          pip install "setuptools<70" pyinstaller
 
       - name: Build frontend (if needed)
         run: |
