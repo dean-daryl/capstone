@@ -58,3 +58,4 @@ __pycache__/
 backend/src/main/resources/static/
 
 .qodo
+somatek-nllb-model.tar.gz
