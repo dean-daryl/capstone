@@ -15,7 +15,7 @@ import {
 import { Loader2, FileText, ExternalLink, LogOut, History } from "lucide-react";
 import { cn } from "./lib/util";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://89.167.119.247";
 
 // Chrome extension storage helpers with localStorage fallback
 const isChromeExtension = typeof chrome !== "undefined" && !!chrome.storage?.local;
@@ -118,9 +118,26 @@ async function fetchQueryHistory(token: string): Promise<QueryHistoryItem[]> {
   return data.data as QueryHistoryItem[];
 }
 
+async function saveRecentActivity(token: string, userId: string, question: string, answer: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/recent-activity/`, {
+      method: "POST",
+      headers: { ...authHeaders(token), title: question.slice(0, 100) },
+      body: JSON.stringify({
+        userId,
+        conversationType: "TEXT",
+        conversation: { question, answer },
+      }),
+    });
+  } catch (err) {
+    console.error("Failed to save recent activity:", err);
+  }
+}
+
 const App: React.FC = () => {
   // Auth state
   const [token, setToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
 
   // Query state
@@ -143,10 +160,13 @@ const App: React.FC = () => {
   // Source detail modal
   const [selectedSource, setSelectedSource] = useState<SourceChunk | null>(null);
 
-  // Load token from storage on mount
+  // Load token and userId from storage on mount
   useEffect(() => {
     storageGet("authToken").then((t) => {
       if (t) setToken(t);
+    });
+    storageGet("userId").then((id) => {
+      if (id) setUserId(id);
     });
   }, []);
 
@@ -198,8 +218,9 @@ const App: React.FC = () => {
       .then((result) => {
         setRagAnswer(result.answer);
         setRagSources(result.sources ?? []);
-        // Refresh history after new query
-        if (token) {
+        // Save recent activity and refresh history
+        if (token && userId) {
+          saveRecentActivity(token, userId, selectedText, result.answer);
           fetchQueryHistory(token).then(setQueryHistory).catch(console.error);
         }
       })
@@ -238,7 +259,9 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     storageRemove("authToken");
+    storageRemove("userId");
     setToken(null);
+    setUserId(null);
     setQueryHistory([]);
     setShowLogin(false);
   };

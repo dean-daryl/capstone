@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Loader2 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://89.167.119.247";
 
 const isChromeExtension = typeof chrome !== "undefined" && !!chrome.storage?.local;
 
@@ -24,16 +24,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username: email, password }),
       });
 
       const data = await res.json();
 
       if (data.status && data.data?.token) {
         if (isChromeExtension) {
-          chrome.storage.local.set({ authToken: data.data.token });
+          chrome.storage.local.set({ authToken: data.data.token, userId: data.data.userId });
         } else {
           localStorage.setItem("authToken", data.data.token);
+          localStorage.setItem("userId", data.data.userId);
         }
         onLoginSuccess(data.data.token);
       } else {
