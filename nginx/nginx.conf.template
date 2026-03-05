@@ -1,6 +1,8 @@
 # ============================================================
 # SomaTek Production Nginx Configuration
-# SSL termination + reverse proxy + SPA static file serving
+# Reverse proxy + SPA static file serving (HTTP-only)
+# To enable SSL later, add back the HTTPS server block with
+# Let's Encrypt certs and uncomment the HTTP→HTTPS redirect.
 # ============================================================
 
 worker_processes auto;
@@ -48,49 +50,22 @@ http {
     }
 
     # -----------------------------------------------------------
-    # HTTP → HTTPS redirect (with Let's Encrypt challenge support)
+    # HTTP server
     # -----------------------------------------------------------
     server {
         listen 80;
         server_name _;
 
-        # Let's Encrypt ACME challenge
-        location /.well-known/acme-challenge/ {
-            root /var/www/certbot;
-        }
-
-        location / {
-            return 301 https://$host$request_uri;
-        }
-    }
-
-    # -----------------------------------------------------------
-    # HTTPS server
-    # -----------------------------------------------------------
-    server {
-        listen 443 ssl;
-        http2 on;
-        server_name _;
-
-        # SSL certificates (mounted from host)
-        ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
-
-        # TLS settings
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers HIGH:!aNULL:!MD5;
-        ssl_prefer_server_ciphers on;
-        ssl_session_cache shared:SSL:10m;
-        ssl_session_timeout 10m;
-
-        # -----------------------------------------------------------
         # Security headers
-        # -----------------------------------------------------------
-        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-XSS-Protection "1; mode=block" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        # Let's Encrypt ACME challenge (for future SSL setup)
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
 
         # -----------------------------------------------------------
         # Auth endpoints (rate limited: 3r/s)
@@ -257,12 +232,27 @@ http {
         }
 
         # -----------------------------------------------------------
+        # Backend fallback — proxies unmatched requests to Spring Boot
+        # -----------------------------------------------------------
+        location @backend {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300s;
+            proxy_send_timeout 300s;
+        }
+
+        # -----------------------------------------------------------
         # React SPA — static files with client-side routing fallback
+        # Any request that doesn't match a static file falls through
+        # to @backend, so new API endpoints work automatically.
         # -----------------------------------------------------------
         location / {
             root /usr/share/nginx/html;
             index index.html;
-            try_files $uri $uri/ /index.html;
+            try_files $uri $uri/ @backend;
 
             # Cache static assets
             location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
