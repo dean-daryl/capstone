@@ -251,6 +251,33 @@ public class DocumentService implements IDocumentService {
         }
     }
 
+    @Override
+    public void reprocessDocument(String id) {
+        RagDocument ragDocument = getDocumentById(id);
+
+        if (ragDocument.getMinioObjectName() == null) {
+            throw new RuntimeException("Document has no stored file to reprocess: " + id);
+        }
+
+        // Clear old vectors if any
+        if (ragDocument.getVectorIds() != null && !ragDocument.getVectorIds().isEmpty()) {
+            vectorStore.delete(ragDocument.getVectorIds());
+            ragDocument.setVectorIds(null);
+        }
+
+        // Reset status
+        ragDocument.setStatus(EDocumentStatus.PROCESSING);
+        ragDocument.setErrorMessage(null);
+        ragDocument.setChunkCount(0);
+        ragDocument.setUpdatedAt(LocalDateTime.now());
+        documentMetadataStore.save(ragDocument);
+
+        // Download file from MinIO and reprocess
+        byte[] fileBytes = minioService.getFileBytes(ragDocument.getMinioObjectName());
+        documentProcessingService.processDocument(
+                ragDocument.getId(), fileBytes, ragDocument.getFilename(), ragDocument.getContentType());
+    }
+
     private void validateFileType(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty or null");

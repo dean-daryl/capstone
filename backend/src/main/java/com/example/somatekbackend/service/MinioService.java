@@ -130,6 +130,19 @@ public class MinioService implements IMinioService {
     }
 
     @Override
+    public byte[] getFileBytes(String objectName) {
+        try (InputStream stream = minioClient.getObject(GetObjectArgs.builder()
+                .bucket(bucketName)
+                .object(objectName)
+                .build())) {
+            return stream.readAllBytes();
+        } catch (Exception e) {
+            logger.error("Failed to download file from MinIO: {}", objectName, e);
+            throw new RuntimeException("Failed to download file from MinIO: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public void deleteObject(String objectName) {
         try {
             minioClient.removeObject(RemoveObjectArgs.builder()

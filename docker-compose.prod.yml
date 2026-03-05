@@ -144,8 +144,8 @@ services:
 
   java-backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: somatek-backend
     restart: unless-stopped
     extra_hosts:
@@ -168,7 +168,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/somatek?authSource=admin
       - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_PUBLIC_URL=https://${DOMAIN}/minio-files
+      - MINIO_PUBLIC_URL=http://${DOMAIN}/minio-files
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}

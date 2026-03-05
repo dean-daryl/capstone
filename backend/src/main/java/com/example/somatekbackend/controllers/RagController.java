@@ -101,6 +101,16 @@ public class RagController {
         }
     }
 
+    @PostMapping("/documents/{id}/reprocess")
+    public ResponseEntity<ResponseObjectDto> reprocessDocument(@PathVariable String id) {
+        try {
+            documentService.reprocessDocument(id);
+            return ResponseEntity.ok(new ResponseObjectDto(null, "Document reprocessing started"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ResponseObjectDto(e));
+        }
+    }
+
     @DeleteMapping("/documents/{id}")
     public ResponseEntity<ResponseObjectDto> deleteDocument(@PathVariable String id) {
         try {

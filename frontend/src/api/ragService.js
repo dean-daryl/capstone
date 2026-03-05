@@ -37,6 +37,11 @@ export const deleteDocument = async (id) => {
   return response.data;
 };
 
+export const reprocessDocument = async (id) => {
+  const response = await apiClient.post(`/rag/documents/${id}/reprocess`);
+  return response.data;
+};
+
 export const translateText = async (text) => {
   const response = await apiClient.post("/translate", {
     text,

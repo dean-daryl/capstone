@@ -8,4 +8,5 @@ public interface IMinioService {
     String getPresignedUrl(String objectName);
     void deleteObject(String objectName);
     boolean objectExists(String objectName);
+    byte[] getFileBytes(String objectName);
 }

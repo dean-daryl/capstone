@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Trash2, Eye, FileText, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, Upload, Trash2, Eye, FileText, BookOpen, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCourseById, deleteCourse, getCourseDocuments } from '../api/courseService';
-import { uploadDocument, deleteDocument, getDocumentViewUrl } from '../api/ragService';
+import { uploadDocument, deleteDocument, getDocumentViewUrl, reprocessDocument } from '../api/ragService';
 import { toast } from 'sonner';
 
 function CourseDetailPage() {
@@ -95,6 +95,17 @@ function CourseDetailPage() {
       navigate('/dashboard/courses');
     } catch {
       toast.error('Failed to delete course');
+    }
+  };
+
+  const handleReprocess = async (docId) => {
+    try {
+      await reprocessDocument(docId);
+      toast.success('Reprocessing started');
+      const docsRes = await getCourseDocuments(id);
+      if (docsRes?.data) setDocuments(docsRes.data);
+    } catch {
+      toast.error('Failed to reprocess document');
     }
   };
 
@@ -221,7 +232,6 @@ function CourseDetailPage() {
               <thead>
                 <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-700">
                   <th className="px-4 py-3">Filename</th>
-                  <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Size</th>
                   <th className="px-4 py-3">Chunks</th>
                   <th className="px-4 py-3">Date</th>
@@ -232,14 +242,6 @@ function CourseDetailPage() {
                 {documents.map((doc) => (
                   <tr key={doc.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
                     <td className="px-4 py-3 text-sm text-gray-200">{doc.filename}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full inline-flex items-center gap-1 ${statusColor(doc.status)}`}>
-                        {(doc.status === 'PROCESSING' || doc.status === 'UPLOADING') && (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        )}
-                        {doc.status}
-                      </span>
-                    </td>
                     <td className="px-4 py-3 text-sm text-gray-400">{formatSize(doc.fileSizeBytes)}</td>
                     <td className="px-4 py-3 text-sm text-gray-400">{doc.chunkCount ?? '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-400">
@@ -254,6 +256,15 @@ function CourseDetailPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
+                        {canManage && doc.status === 'FAILED' && (
+                          <button
+                            onClick={() => handleReprocess(doc.id)}
+                            className="p-1.5 text-gray-400 hover:text-yellow-400 rounded transition-colors"
+                            title="Reprocess"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+                        )}
                         {canManage && (
                           <button
                             onClick={() => setDeleteConfirm(doc.id)}

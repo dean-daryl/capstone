@@ -77,6 +77,16 @@ public class LocalFileStorageService implements IMinioService {
     }
 
     @Override
+    public byte[] getFileBytes(String objectName) {
+        try {
+            return Files.readAllBytes(baseDir.resolve(objectName));
+        } catch (IOException e) {
+            logger.error("Failed to read local file: {}", objectName, e);
+            throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
     public boolean objectExists(String objectName) {
         return Files.exists(baseDir.resolve(objectName));
     }

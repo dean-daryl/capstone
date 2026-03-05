@@ -61,13 +61,14 @@ public class DocumentProcessingService {
                 chunk.getMetadata().put("filename", ragDocument.getFilename());
             }
 
-            // Store in vector store (auto-embeds via Ollama and stores in Qdrant)
-            vectorStore.add(chunks);
-
-            // Collect vector IDs
+            // Store in vector store one chunk at a time to avoid exceeding embedding context length
             List<String> vectorIds = new ArrayList<>();
-            for (Document chunk : chunks) {
-                vectorIds.add(chunk.getId());
+            for (int i = 0; i < chunks.size(); i++) {
+                vectorStore.add(List.of(chunks.get(i)));
+                vectorIds.add(chunks.get(i).getId());
+                if ((i + 1) % 50 == 0 || i == chunks.size() - 1) {
+                    logger.info("Embedded {}/{} chunks for document: {}", i + 1, chunks.size(), filename);
+                }
             }
 
             ragDocument.setVectorIds(vectorIds);

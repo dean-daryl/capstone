@@ -24,4 +24,6 @@ public interface IDocumentService {
     List<RagDocument> getDocumentsByCourseId(String courseId);
 
     void deleteDocumentsByCourseId(String courseId);
+
+    void reprocessDocument(String id);
 }
