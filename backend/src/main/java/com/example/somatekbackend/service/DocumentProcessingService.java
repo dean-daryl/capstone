@@ -61,14 +61,43 @@ public class DocumentProcessingService {
                 chunk.getMetadata().put("filename", ragDocument.getFilename());
             }
 
-            // Store in vector store one chunk at a time to avoid exceeding embedding context length
-            List<String> vectorIds = new ArrayList<>();
-            for (int i = 0; i < chunks.size(); i++) {
-                vectorStore.add(List.of(chunks.get(i)));
-                vectorIds.add(chunks.get(i).getId());
-                if ((i + 1) % 50 == 0 || i == chunks.size() - 1) {
-                    logger.info("Embedded {}/{} chunks for document: {}", i + 1, chunks.size(), filename);
+            // Hard cap: truncate any chunk over 2000 chars (~500 tokens in any tokenizer)
+            int maxCharsPerChunk = 2000;
+            for (int j = 0; j < chunks.size(); j++) {
+                String text = chunks.get(j).getText();
+                if (text != null && text.length() > maxCharsPerChunk) {
+                    logger.warn("Truncating oversized chunk ({} chars) for document: {}", text.length(), filename);
+                    chunks.set(j, chunks.get(j).mutate().text(text.substring(0, maxCharsPerChunk)).build());
                 }
+            }
+
+            // Store in vector store in batches of 20 (Ollama embeds each text independently)
+            int batchSize = 20;
+            List<String> vectorIds = new ArrayList<>();
+            int skipped = 0;
+            for (int i = 0; i < chunks.size(); i += batchSize) {
+                List<Document> batch = chunks.subList(i, Math.min(i + batchSize, chunks.size()));
+                try {
+                    vectorStore.add(batch);
+                    for (Document doc : batch) {
+                        vectorIds.add(doc.getId());
+                    }
+                } catch (Exception ex) {
+                    // Batch failed — fall back to one-by-one for this batch
+                    for (Document doc : batch) {
+                        try {
+                            vectorStore.add(List.of(doc));
+                            vectorIds.add(doc.getId());
+                        } catch (Exception ex2) {
+                            skipped++;
+                            logger.warn("Skipping chunk for document {} — embedding failed: {}",
+                                    filename, ex2.getMessage());
+                        }
+                    }
+                }
+                int processed = Math.min(i + batchSize, chunks.size());
+                logger.info("Embedded {}/{} chunks (skipped {}) for document: {}",
+                        processed, chunks.size(), skipped, filename);
             }
 
             ragDocument.setVectorIds(vectorIds);

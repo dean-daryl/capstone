@@ -111,7 +111,7 @@ public class MinioService implements IMinioService {
                 .map(segment -> URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20"))
                 .collect(Collectors.joining("/"));
 
-        return publicUrl + "/" + bucketName + "/" + encodedPath;
+        return publicUrl + "/" + encodedPath;
     }
 
     /**
