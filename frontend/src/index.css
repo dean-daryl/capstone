@@ -1,57 +1,38 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import '@mantine/core/styles.css';
+@import '@mantine/notifications/styles.css';
 
-@layer base {
-    body {
-      @apply antialiased;
-    }
-  }
-  
-  @layer utilities {
-    .bg-gradient-overlay {
-      background: linear-gradient(
-        to bottom right,
-        rgba(126, 34, 206, 0.1),
-        rgba(37, 99, 235, 0.1)
-      );
-    }
-  }
-  
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-  
-  .animate-fadeIn {
-    animation: fadeIn 0.2s ease-out;
-  }
-  @layer components {
-    .transition-theme {
-      @apply transition-colors duration-200;
-    }
-  }
-  
-  /* Custom scrollbar for modern browsers */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100 dark:bg-gray-800;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-500;
-  }
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--mantine-color-gray-1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--mantine-color-gray-4);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mantine-color-gray-5);
+}
+
+[data-mantine-color-scheme='dark'] ::-webkit-scrollbar-track {
+  background: var(--mantine-color-dark-7);
+}
+
+[data-mantine-color-scheme='dark'] ::-webkit-scrollbar-thumb {
+  background: var(--mantine-color-dark-4);
+}
+
+[data-mantine-color-scheme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: var(--mantine-color-dark-3);
+}

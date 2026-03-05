@@ -1,5 +1,6 @@
-import React from "react";
-import { Loader2, Languages, Sparkles } from "lucide-react";
+import React from 'react';
+import { Button, Group } from '@mantine/core';
+import { IconLanguage, IconSparkles } from '@tabler/icons-react';
 
 interface ActionButtonsProps {
   onTranslate: () => void;
@@ -15,31 +16,27 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   isSimplifying,
 }) => {
   return (
-    <div className="flex gap-2">
-      <button
+    <Group gap="xs">
+      <Button
+        variant="light"
+        color="indigo"
+        size="xs"
         onClick={onTranslate}
-        disabled={isTranslating}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50 transition-colors"
+        loading={isTranslating}
+        leftSection={!isTranslating && <IconLanguage size={14} />}
       >
-        {isTranslating ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Languages className="w-3.5 h-3.5" />
-        )}
         Translate to Kinyarwanda
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="light"
+        color="blue"
+        size="xs"
         onClick={onSimplify}
-        disabled={isSimplifying}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition-colors"
+        loading={isSimplifying}
+        leftSection={!isSimplifying && <IconSparkles size={14} />}
       >
-        {isSimplifying ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Sparkles className="w-3.5 h-3.5" />
-        )}
         Simplify
-      </button>
-    </div>
+      </Button>
+    </Group>
   );
 };

@@ -1,25 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, FileText, MessageSquare, Star, Tag } from 'lucide-react';
+import {
+  Container,
+  SimpleGrid,
+  Card,
+  Text,
+  Title,
+  Group,
+  ThemeIcon,
+  Skeleton,
+  Stack,
+} from '@mantine/core';
+import {
+  IconRobot,
+  IconFileText,
+  IconMessageCircle,
+  IconStar,
+  IconTag,
+} from '@tabler/icons-react';
 import { fetchAnalyticsData } from '../api/analyticsService';
 import { fetchOverviewStats } from '../api/statsService';
 import useFetch from '../api/useFetch';
-import Skeleton from './Skeleton';
 import AnalyticsReChart from './charts/AnalyticsRechart';
 import { getDateRange } from '../utils/dateUtils';
 import ThemeToggle from '../components/ThemeToggle';
 
-const StatCard = ({ title, value, icon: Icon }) => (
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-    <div className="flex justify-between items-center">
+const StatCard = ({ title, value, icon: Icon, color }) => (
+  <Card shadow="sm" padding="lg" withBorder>
+    <Group justify="space-between" align="flex-start">
       <div>
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-        <h3 className="text-2xl font-semibold mt-2 text-gray-900 dark:text-white">{value}</h3>
+        <Text size="sm" c="dimmed" fw={500}>
+          {title}
+        </Text>
+        <Title order={2} mt="xs">
+          {value}
+        </Title>
       </div>
-      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-        <Icon className="w-6 h-6 text-blue-500 dark:text-blue-400" />
-      </div>
-    </div>
-  </div>
+      <ThemeIcon size={44} radius="md" variant="light" color={color || 'indigo'}>
+        <Icon size={22} />
+      </ThemeIcon>
+    </Group>
+  </Card>
 );
 
 const Home = () => {
@@ -53,55 +73,55 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 space-y-8">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <Skeleton width="200px" height="30px" />
-          <Skeleton width="120px" height="40px" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} height="120px" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
-            <Skeleton key={i} height="400px" />
-          ))}
-        </div>
-      </div>
+      <Container fluid p="lg">
+        <Stack gap="lg">
+          <Group justify="space-between">
+            <Skeleton height={30} width={200} />
+            <Skeleton height={36} width={120} />
+          </Group>
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} height={120} radius="md" />
+            ))}
+          </SimpleGrid>
+          <SimpleGrid cols={{ base: 1, lg: 2 }}>
+            {[1, 2].map((i) => (
+              <Skeleton key={i} height={400} radius="md" />
+            ))}
+          </SimpleGrid>
+        </Stack>
+      </Container>
     );
   }
 
   const stats = [
-    { title: 'Total Documents', value: overviewStats?.totalDocuments ?? '-', icon: FileText },
-    { title: 'Total Queries', value: overviewStats?.totalQueries ?? '-', icon: MessageSquare },
-    { title: 'Avg Satisfaction', value: overviewStats?.averageSatisfaction != null ? overviewStats.averageSatisfaction.toFixed(1) : '-', icon: Star },
-    { title: 'Total Topics', value: overviewStats?.totalTopics ?? '-', icon: Tag },
+    { title: 'Total Documents', value: overviewStats?.totalDocuments ?? '-', icon: IconFileText, color: 'blue' },
+    { title: 'Total Queries', value: overviewStats?.totalQueries ?? '-', icon: IconMessageCircle, color: 'violet' },
+    { title: 'Avg Satisfaction', value: overviewStats?.averageSatisfaction != null ? overviewStats.averageSatisfaction.toFixed(1) : '-', icon: IconStar, color: 'yellow' },
+    { title: 'Total Topics', value: overviewStats?.totalTopics ?? '-', icon: IconTag, color: 'teal' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      <div className="p-6 lg:p-8 space-y-8">
+    <Container fluid p="lg">
+      <Stack gap="lg">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <Bot className="w-10 h-10 text-purple-500" />
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              Welcome back {firstname}
-            </h1>
-          </div>
+        <Group justify="space-between">
+          <Group gap="sm">
+            <IconRobot size={32} color="var(--mantine-color-indigo-6)" />
+            <Title order={2}>Welcome back {firstname}</Title>
+          </Group>
           <ThemeToggle />
-        </div>
+        </Group>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
           {stats.map((stat, index) => (
             <StatCard key={index} {...stat} />
           ))}
-        </div>
+        </SimpleGrid>
 
         {/* Analytics Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SimpleGrid cols={{ base: 1, lg: 2 }}>
           {ranges.map((range, index) => {
             const data = results[index].data || [];
             const transformedData = Object.entries(data).map(([keyword, count]) => ({
@@ -110,22 +130,17 @@ const Home = () => {
             }));
 
             return (
-              <div
-                key={range}
-                className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700"
-              >
-                <h2 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white capitalize">
+              <Card key={range} shadow="sm" padding="lg" withBorder>
+                <Title order={4} mb="md" tt="capitalize">
                   {range.replace(/([A-Z])/g, ' $1')} Analytics
-                </h2>
-                <div className="overflow-hidden">
-                  <AnalyticsReChart data={transformedData} />
-                </div>
-              </div>
+                </Title>
+                <AnalyticsReChart data={transformedData} />
+              </Card>
             );
           })}
-        </div>
-      </div>
-    </div>
+        </SimpleGrid>
+      </Stack>
+    </Container>
   );
 };
 

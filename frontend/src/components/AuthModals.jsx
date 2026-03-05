@@ -1,180 +1,164 @@
-import { Chrome, Github, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Modal,
+  TextInput,
+  PasswordInput,
+  Button,
+  Stack,
+  Divider,
+  Group,
+  Text,
+  Select,
+  Title,
+} from '@mantine/core';
+import { IconBrandGoogle, IconBrandGithub } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { login as loginApi, signup } from '../api/authService';
 import { useAuth } from '../context/AuthContext';
-import { toast } from 'sonner';
 
-const loginDataInitial = {
-  username: '',
-  password: ''
-};
-
-const signupDataInitial = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  password: '',
-  role: ''
-};
+const loginDataInitial = { username: '', password: '' };
+const signupDataInitial = { firstName: '', lastName: '', email: '', password: '', role: '' };
 
 export function AuthModal({ isOpen, onClose, onModalSwitch, type }) {
   const [loginData, setLoginData] = useState(loginDataInitial);
   const [signupData, setSignupData] = useState(signupDataInitial);
+  const [loading, setLoading] = useState(false);
   const { login: authLogin } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (type === 'login') {
-      if (name === 'email') {
-        setLoginData((prevData) => ({ ...prevData, username: value }));
-      }
-      setLoginData((prevData) => ({ ...prevData, [name]: value }));
-    } else {
-      setSignupData((prevData) => ({ ...prevData, [name]: value }));
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (type === 'login') {
-      const response = await loginApi(loginData);
-      if (response?.status == true) {
-        toast.success('Login successful');
-        authLogin({
-          token: response.data.token,
-          firstName: response.data.firstName,
-          lastName: response.data.lastName,
-          email: response.data.email,
-          role: response.data.role,
-          userId: response.data.userId,
-        });
-        onClose();
-        navigate('/dashboard/query');
+    setLoading(true);
+    try {
+      if (type === 'login') {
+        const response = await loginApi(loginData);
+        if (response?.status == true) {
+          notifications.show({ title: 'Welcome back!', message: 'Login successful', color: 'green' });
+          authLogin({
+            token: response.data.token,
+            firstName: response.data.firstName,
+            lastName: response.data.lastName,
+            email: response.data.email,
+            role: response.data.role,
+            userId: response.data.userId,
+          });
+          onClose();
+          navigate('/dashboard/query');
+        } else {
+          notifications.show({ title: 'Error', message: response.message, color: 'red' });
+        }
       } else {
-        toast.error(response.message);
+        const response = await signup(signupData);
+        if (response?.status == true) {
+          notifications.show({ title: 'Account created', message: 'Signup successful', color: 'green' });
+          onModalSwitch();
+        } else {
+          notifications.show({ title: 'Error', message: response.message, color: 'red' });
+        }
       }
-    } else {
-      const response = await signup(signupData);
-      if (response?.status == true) {
-        toast.success('Signup successful');
-        onModalSwitch();
-      } else {
-        toast.error(response.message);
-      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-xl p-8 w-full max-w-md relative animate-fadeIn">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-white"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <h2 className="text-2xl font-bold mb-6">
-          {type === 'login' ? 'Welcome Back' : 'Create Account'}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal
+      opened={isOpen}
+      onClose={onClose}
+      title={
+        <Title order={3}>{type === 'login' ? 'Welcome Back' : 'Create Account'}</Title>
+      }
+      centered
+      size="sm"
+    >
+      <form onSubmit={handleSubmit}>
+        <Stack gap="sm">
           {type === 'register' && (
-          <div className='flex flex-col gap-5'>
-            <input
-              type="text"
-              name="firstName"
-              placeholder="First Name"
-              value={signupData.firstName}
-              onChange={handleChange}
-              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-            />
-
-            <input
-              type="text"
-              name="lastName"
-              placeholder="Last Name "
-              value={signupData.lastName}
-              onChange={handleChange}
-              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
-            />
-            <select
-              name="role"
-              value={signupData.role}
-              onChange={handleChange}
-              className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-100"
-            >
-              <option value="">Select Role</option>
-              <option value="STUDENT">Student</option>
-              <option value="TEACHER">Teacher</option>
-            </select>
-          </div>
-
+            <>
+              <TextInput
+                label="First Name"
+                placeholder="First Name"
+                value={signupData.firstName}
+                onChange={(e) => setSignupData({ ...signupData, firstName: e.target.value })}
+              />
+              <TextInput
+                label="Last Name"
+                placeholder="Last Name"
+                value={signupData.lastName}
+                onChange={(e) => setSignupData({ ...signupData, lastName: e.target.value })}
+              />
+              <Select
+                label="Role"
+                placeholder="Select Role"
+                data={[
+                  { value: 'STUDENT', label: 'Student' },
+                  { value: 'TEACHER', label: 'Teacher' },
+                ]}
+                value={signupData.role}
+                onChange={(val) => setSignupData({ ...signupData, role: val })}
+              />
+            </>
           )}
-          <input
+          <TextInput
+            label="Email"
             type="email"
-            name="email"
             placeholder="Email"
-            value={type === 'login' ? loginData.email : signupData.email}
-            onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+            value={type === 'login' ? loginData.username : signupData.email}
+            onChange={(e) => {
+              if (type === 'login') {
+                setLoginData({ ...loginData, username: e.target.value });
+              } else {
+                setSignupData({ ...signupData, email: e.target.value });
+              }
+            }}
           />
-          <input
-            type="password"
-            name="password"
+          <PasswordInput
+            label="Password"
             placeholder="Password"
             value={type === 'login' ? loginData.password : signupData.password}
-            onChange={handleChange}
-            className="w-full px-4 py-2 bg-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+            onChange={(e) => {
+              if (type === 'login') {
+                setLoginData({ ...loginData, password: e.target.value });
+              } else {
+                setSignupData({ ...signupData, password: e.target.value });
+              }
+            }}
           />
-
-          <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors">
+          <Button type="submit" fullWidth loading={loading}>
             {type === 'login' ? 'Sign In' : 'Sign Up'}
-          </button>
-        </form>
+          </Button>
+        </Stack>
+      </form>
 
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-600"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-gray-800 text-gray-400">Or continue with</span>
-          </div>
-        </div>
+      <Divider label="Or continue with" labelPosition="center" my="md" />
 
-        <div className="grid grid-cols-2 gap-4">
-          <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-600 rounded-lg hover:border-purple-500 transition-colors">
-            <Chrome className="w-5 h-5" />
-            Google
-          </button>
-          <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-600 rounded-lg hover:border-purple-500 transition-colors">
-            <Github className="w-5 h-5" />
-            GitHub
-          </button>
-        </div>
+      <Group grow>
+        <Button variant="default" leftSection={<IconBrandGoogle size={18} />}>
+          Google
+        </Button>
+        <Button variant="default" leftSection={<IconBrandGithub size={18} />}>
+          GitHub
+        </Button>
+      </Group>
 
-        <p className="mt-6 text-center text-gray-400 text-sm">
-          {type === 'login' ? (
-            <>
-              Don't have an account?{' '}
-              <button onClick={onModalSwitch} className="text-purple-400 hover:text-purple-300">
-                Sign up
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{' '}
-              <button onClick={onModalSwitch} className="text-purple-400 hover:text-purple-300">
-                Sign in
-              </button>
-            </>
-          )}
-        </p>
-      </div>
-    </div>
+      <Text ta="center" size="sm" mt="md" c="dimmed">
+        {type === 'login' ? (
+          <>
+            Don&apos;t have an account?{' '}
+            <Text component="button" type="button" onClick={onModalSwitch} c="indigo" fw={500} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              Sign up
+            </Text>
+          </>
+        ) : (
+          <>
+            Already have an account?{' '}
+            <Text component="button" type="button" onClick={onModalSwitch} c="indigo" fw={500} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              Sign in
+            </Text>
+          </>
+        )}
+      </Text>
+    </Modal>
   );
 }
