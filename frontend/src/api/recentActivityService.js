@@ -2,7 +2,7 @@ import apiClient from "./apiClient";
 
 export const getRecentActivity = async (userId, startDate, endDate, pageNumber, pageSize) => {
     try {
-        const response = await apiClient.get("recent-activity/user/date-range", {
+        const response = await apiClient.get("/recent-activity/user/date-range", {
             params: { userId, startDate, endDate, pageNumber, pageSize },
             headers: { Accept: "application/json" },
         });
@@ -15,7 +15,7 @@ export const getRecentActivity = async (userId, startDate, endDate, pageNumber, 
 
 export const getRecentActivityById = async (id) => {
     try {
-        const response = await apiClient.get("recent-activity/user/id", {
+        const response = await apiClient.get("/recent-activity/user/id", {
             params: { recentActivityId: id },
             headers: { Accept: "application/json" },
         });
@@ -28,7 +28,7 @@ export const getRecentActivityById = async (id) => {
 
 export const createRecentActivity = async (userId, question, answer) => {
     try {
-        await apiClient.post("recent-activity", {
+        await apiClient.post("/recent-activity/", {
             userId,
             conversationType: "TEXT",
             conversation: { question, answer },
