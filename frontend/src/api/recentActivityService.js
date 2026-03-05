@@ -28,7 +28,7 @@ export const getRecentActivityById = async (id) => {
 
 export const createRecentActivity = async (userId, question, answer) => {
     try {
-        await apiClient.post("/recent-activity/", {
+        await apiClient.post("/recent-activity", {
             userId,
             conversationType: "TEXT",
             conversation: { question, answer },
