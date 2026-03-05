@@ -1,6 +1,29 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, FileText, ExternalLink, Eye, Loader2, Languages, Sparkles } from 'lucide-react';
+import {
+  Container,
+  Title,
+  Text,
+  TextInput,
+  Button,
+  Card,
+  Group,
+  Stack,
+  Alert,
+  Badge,
+  Paper,
+  Loader,
+  Anchor,
+  Box,
+} from '@mantine/core';
+import {
+  IconSend,
+  IconFileText,
+  IconExternalLink,
+  IconEye,
+  IconLanguage,
+  IconSparkles,
+} from '@tabler/icons-react';
 import { queryDocuments, translateText, simplifyText } from '../api/ragService';
 import { createRecentActivity } from '../api/recentActivityService';
 import { useAuth } from '../context/AuthContext';
@@ -67,129 +90,171 @@ const QueryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
+    <Container size="md" p="lg">
+      <Stack gap="lg">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Ask AI</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <Title order={2}>Ask AI</Title>
+          <Text size="sm" c="dimmed" mt={4}>
             Ask questions about your uploaded documents
-          </p>
+          </Text>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex gap-3">
-          <input
-            type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask a question about your documents..."
-            className="flex-1 px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            disabled={loading || !question.trim()}
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg flex items-center gap-2 transition-colors"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-            Ask
-          </button>
+        <form onSubmit={handleSubmit}>
+          <Group gap="sm" align="flex-end">
+            <TextInput
+              flex={1}
+              placeholder="Ask a question about your documents..."
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              disabled={loading}
+              size="md"
+            />
+            <Button
+              type="submit"
+              size="md"
+              loading={loading}
+              disabled={!question.trim()}
+              leftSection={!loading && <IconSend size={18} />}
+            >
+              Ask
+            </Button>
+          </Group>
         </form>
 
         {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
+          <Alert color="red" variant="light">
             {error}
-          </div>
+          </Alert>
         )}
 
         {result && (
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Answer</h2>
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <Stack gap="md">
+            <Card shadow="sm" padding="lg" withBorder>
+              <Title order={4} mb="sm">
+                Answer
+              </Title>
+              <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
                 {result.answer}
-              </p>
+              </Text>
 
-              <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                <button
+              <Group gap="sm" mt="md" pt="md" style={{ borderTop: '1px solid var(--mantine-color-gray-2)' }}>
+                <Button
+                  variant="light"
+                  color="indigo"
+                  size="sm"
                   onClick={handleTranslate}
-                  disabled={isTranslating}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 disabled:opacity-50 transition-colors"
+                  loading={isTranslating}
+                  leftSection={<IconLanguage size={16} />}
                 >
-                  {isTranslating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
                   Translate to Kinyarwanda
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="light"
+                  color="blue"
+                  size="sm"
                   onClick={handleSimplify}
-                  disabled={isSimplifying}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 transition-colors"
+                  loading={isSimplifying}
+                  leftSection={<IconSparkles size={16} />}
                 >
-                  {isSimplifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   Simplify
-                </button>
-              </div>
+                </Button>
+              </Group>
 
               {translatedText && (
-                <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg">
-                  <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-2">Kinyarwanda</p>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{translatedText}</p>
-                </div>
+                <Paper
+                  mt="md"
+                  p="md"
+                  radius="md"
+                  bg="var(--mantine-color-indigo-0)"
+                  style={{ border: '1px solid var(--mantine-color-indigo-2)' }}
+                >
+                  <Text size="xs" fw={600} tt="uppercase" c="indigo" mb="xs">
+                    Kinyarwanda
+                  </Text>
+                  <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                    {translatedText}
+                  </Text>
+                </Paper>
               )}
 
               {simplifiedText && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg">
-                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2">Simplified</p>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{simplifiedText}</p>
-                </div>
+                <Paper
+                  mt="md"
+                  p="md"
+                  radius="md"
+                  bg="var(--mantine-color-blue-0)"
+                  style={{ border: '1px solid var(--mantine-color-blue-2)' }}
+                >
+                  <Text size="xs" fw={600} tt="uppercase" c="blue" mb="xs">
+                    Simplified
+                  </Text>
+                  <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+                    {simplifiedText}
+                  </Text>
+                </Paper>
               )}
-            </div>
+            </Card>
 
             {result.sources && result.sources.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sources</h2>
-                <div className="space-y-3">
+              <Card shadow="sm" padding="lg" withBorder>
+                <Title order={4} mb="md">
+                  Sources
+                </Title>
+                <Stack gap="sm">
                   {result.sources.map((source, index) => (
-                    <div
+                    <Paper
                       key={index}
-                      className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-100 dark:border-gray-600"
+                      p="md"
+                      radius="md"
+                      withBorder
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-4 h-4 text-purple-500" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {source.filename}
-                        </span>
-                        <div className="flex items-center gap-2 ml-auto">
+                      <Group justify="space-between" mb="xs">
+                        <Group gap="xs">
+                          <IconFileText size={16} color="var(--mantine-color-indigo-6)" />
+                          <Text size="sm" fw={500}>
+                            {source.filename}
+                          </Text>
+                        </Group>
+                        <Group gap="xs">
                           {source.documentUrl && (
-                            <a
+                            <Anchor
                               href={source.documentUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                              size="xs"
+                              c="indigo"
                             >
-                              <ExternalLink className="w-3 h-3" /> Open
-                            </a>
+                              <Group gap={4}>
+                                <IconExternalLink size={12} /> Open
+                              </Group>
+                            </Anchor>
                           )}
                           {source.documentId && (
-                            <Link
+                            <Anchor
+                              component={Link}
                               to={`/dashboard/documents/${source.documentId}`}
-                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                              size="xs"
+                              c="blue"
                             >
-                              <Eye className="w-3 h-3" /> View
-                            </Link>
+                              <Group gap={4}>
+                                <IconEye size={12} /> View
+                              </Group>
+                            </Anchor>
                           )}
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                        </Group>
+                      </Group>
+                      <Text size="sm" c="dimmed" lineClamp={3}>
                         {source.chunkText}
-                      </p>
-                    </div>
+                      </Text>
+                    </Paper>
                   ))}
-                </div>
-              </div>
+                </Stack>
+              </Card>
             )}
-          </div>
+          </Stack>
         )}
-      </div>
-    </div>
+      </Stack>
+    </Container>
   );
 };
 

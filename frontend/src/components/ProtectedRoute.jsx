@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { Center, Loader, Stack, Title, Text } from '@mantine/core';
 import { useAuth } from '../context/AuthContext';
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -7,9 +8,9 @@ function ProtectedRoute({ children, allowedRoles }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-      </div>
+      <Center h="100vh">
+        <Loader color="indigo" size="md" />
+      </Center>
     );
   }
 
@@ -19,12 +20,12 @@ function ProtectedRoute({ children, allowedRoles }) {
 
   if (allowedRoles && !allowedRoles.includes(role)) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-300 mb-4">403</h1>
-          <p className="text-gray-400">You do not have permission to access this page.</p>
-        </div>
-      </div>
+      <Center h="100vh">
+        <Stack align="center" gap="xs">
+          <Title order={1} c="dimmed">403</Title>
+          <Text c="dimmed">You do not have permission to access this page.</Text>
+        </Stack>
+      </Center>
     );
   }
 

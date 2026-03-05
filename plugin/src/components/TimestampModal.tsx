@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Button } from '../components/ui/button'
-import { Clock } from 'lucide-react';
+import { Modal, Button, Group, Stack, Text } from '@mantine/core';
+import { IconClock } from '@tabler/icons-react';
 import { TimeRangeSlider } from './TimeRangeSlider';
 
 interface TimestampModalProps {
@@ -24,50 +23,51 @@ export const TimestampModal = ({ onConfirm, onClose, videoDuration }: TimestampM
   };
 
   return (
-    <Dialog open={true} onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-md  bg-white w-[90%]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Select Video Segment
-          </DialogTitle>
-        </DialogHeader>
-        <div className="py-6">
-          <div className="space-y-8">
-            <div className="px-2">
-              <TimeRangeSlider
-                min={0}
-                max={videoDuration}
-                step={1}
-                value={range}
-                onValueChange={setRange}
-              />
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-medium">Start</span>
-                <span className="text-sm text-muted-foreground">{formatTime(range[0])}</span>
-              </div>
-              <div className="h-px flex-1 mx-4 bg-border" />
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-medium">End</span>
-                <span className="text-sm text-muted-foreground">{formatTime(range[1])}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => {
-            onConfirm(range[0], range[1])
-            onClose()
-           }}>
-            Transcribe Segment
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <Modal
+      opened={true}
+      onClose={onClose}
+      title={
+        <Group gap="xs">
+          <IconClock size={18} />
+          <Text fw={600}>Select Video Segment</Text>
+        </Group>
+      }
+      centered
+      size="sm"
+    >
+      <Stack gap="lg" py="md">
+        <TimeRangeSlider
+          min={0}
+          max={videoDuration}
+          step={1}
+          value={range}
+          onValueChange={setRange}
+        />
+        <Group justify="space-between">
+          <Stack align="center" gap={2}>
+            <Text size="sm" fw={500}>Start</Text>
+            <Text size="sm" c="dimmed">{formatTime(range[0])}</Text>
+          </Stack>
+          <div style={{ flex: 1, height: 1, background: 'var(--mantine-color-gray-3)', margin: '0 16px' }} />
+          <Stack align="center" gap={2}>
+            <Text size="sm" fw={500}>End</Text>
+            <Text size="sm" c="dimmed">{formatTime(range[1])}</Text>
+          </Stack>
+        </Group>
+      </Stack>
+      <Group justify="flex-end" gap="sm">
+        <Button variant="default" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => {
+            onConfirm(range[0], range[1]);
+            onClose();
+          }}
+        >
+          Transcribe Segment
+        </Button>
+      </Group>
+    </Modal>
   );
 };

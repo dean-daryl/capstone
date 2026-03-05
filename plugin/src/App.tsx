@@ -1,24 +1,35 @@
-import React, { useEffect, useState } from "react";
-import { Header } from "./components/Header";
-import { LoginForm } from "./components/LoginForm";
-import { ChatHistory } from "./components/ChatHistory";
-import { ActionButtons } from "./components/ActionButtons";
-import { SourceCard } from "./components/SourceCard";
-import { Card, CardContent } from "./components/ui/card";
+import React, { useEffect, useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "./components/ui/dialog";
-import { Loader2, FileText, ExternalLink, LogOut, History } from "lucide-react";
-import { cn } from "./lib/util";
+  Box,
+  Card,
+  Group,
+  Text,
+  Button,
+  ActionIcon,
+  Stack,
+  Paper,
+  Loader,
+  Center,
+  Modal,
+  Anchor,
+  Divider,
+  ScrollArea,
+} from '@mantine/core';
+import {
+  IconHistory,
+  IconLogout,
+  IconFileText,
+  IconExternalLink,
+} from '@tabler/icons-react';
+import { Header } from './components/Header';
+import { LoginForm } from './components/LoginForm';
+import { ChatHistory } from './components/ChatHistory';
+import { ActionButtons } from './components/ActionButtons';
+import { SourceCard } from './components/SourceCard';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://89.167.119.247';
 
-// Chrome extension storage helpers with localStorage fallback
-const isChromeExtension = typeof chrome !== "undefined" && !!chrome.storage?.local;
+const isChromeExtension = typeof chrome !== 'undefined' && !!chrome.storage?.local;
 
 function storageGet(key: string): Promise<string | null> {
   if (isChromeExtension) {
@@ -60,52 +71,44 @@ interface QueryHistoryItem {
 
 function authHeaders(token: string): Record<string, string> {
   return {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   };
 }
 
 async function ragQuery(question: string, token: string | null): Promise<RagResponse> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}/rag/query`, {
-    method: "POST",
+    method: 'POST',
     headers,
-    body: JSON.stringify({
-      question,
-      type: "rag",
-      source: "plugin",
-    }),
+    body: JSON.stringify({ question, type: 'rag', source: 'plugin' }),
   });
   const data = await res.json();
-  if (!data.status) throw new Error(data.message || "Query failed");
+  if (!data.status) throw new Error(data.message || 'Query failed');
   return data.data as RagResponse;
 }
 
 async function translateText(text: string, token: string): Promise<string> {
   const res = await fetch(`${API_BASE}/translate`, {
-    method: "POST",
+    method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({
-      text,
-      srcLang: "eng_Latn",
-      tgtLang: "kin_Latn",
-    }),
+    body: JSON.stringify({ text, srcLang: 'eng_Latn', tgtLang: 'kin_Latn' }),
   });
   const data = await res.json();
-  if (!data.status) throw new Error(data.message || "Translation failed");
+  if (!data.status) throw new Error(data.message || 'Translation failed');
   return data.data.translated_text;
 }
 
 async function simplifyText(text: string, token: string): Promise<string> {
   const res = await fetch(`${API_BASE}/simplify`, {
-    method: "POST",
+    method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify({ text }),
   });
   const data = await res.json();
-  if (!data.status) throw new Error(data.message || "Simplification failed");
+  if (!data.status) throw new Error(data.message || 'Simplification failed');
   return data.data.simplifiedText;
 }
 
@@ -118,48 +121,65 @@ async function fetchQueryHistory(token: string): Promise<QueryHistoryItem[]> {
   return data.data as QueryHistoryItem[];
 }
 
+async function saveRecentActivity(
+  token: string,
+  userId: string,
+  question: string,
+  answer: string
+): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/recent-activity/`, {
+      method: 'POST',
+      headers: { ...authHeaders(token), title: question.slice(0, 100) },
+      body: JSON.stringify({
+        userId,
+        conversationType: 'TEXT',
+        conversation: { question, answer },
+      }),
+    });
+  } catch (err) {
+    console.error('Failed to save recent activity:', err);
+  }
+}
+
 const App: React.FC = () => {
-  // Auth state
   const [token, setToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
 
-  // Query state
-  const [selectedText, setSelectedText] = useState("");
-  const [ragAnswer, setRagAnswer] = useState("");
+  const [selectedText, setSelectedText] = useState('');
+  const [ragAnswer, setRagAnswer] = useState('');
   const [ragSources, setRagSources] = useState<SourceChunk[]>([]);
   const [isQuerying, setIsQuerying] = useState(false);
-  const [queryError, setQueryError] = useState("");
+  const [queryError, setQueryError] = useState('');
 
-  // Action state
-  const [translatedText, setTranslatedText] = useState("");
+  const [translatedText, setTranslatedText] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
-  const [simplifiedText, setSimplifiedText] = useState("");
+  const [simplifiedText, setSimplifiedText] = useState('');
   const [isSimplifying, setIsSimplifying] = useState(false);
 
-  // History state
   const [queryHistory, setQueryHistory] = useState<QueryHistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Source detail modal
   const [selectedSource, setSelectedSource] = useState<SourceChunk | null>(null);
 
-  // Load token from storage on mount
   useEffect(() => {
-    storageGet("authToken").then((t) => {
+    storageGet('authToken').then((t) => {
       if (t) setToken(t);
+    });
+    storageGet('userId').then((id) => {
+      if (id) setUserId(id);
     });
   }, []);
 
-  // Fetch history when token becomes available
   useEffect(() => {
     if (token) {
       fetchQueryHistory(token).then(setQueryHistory).catch(console.error);
     }
   }, [token]);
 
-  // Capture selected text from active tab (only in Chrome extension context)
   useEffect(() => {
-    if (typeof chrome === "undefined" || !chrome.tabs?.query) return;
+    if (typeof chrome === 'undefined' || !chrome.tabs?.query) return;
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const tabId = tabs[0]?.id;
@@ -168,11 +188,11 @@ const App: React.FC = () => {
       chrome.scripting.executeScript(
         {
           target: { tabId },
-          func: () => window.getSelection()?.toString() || "",
+          func: () => window.getSelection()?.toString() || '',
         },
         (results) => {
           if (chrome.runtime.lastError) {
-            console.error("Script injection failed:", chrome.runtime.lastError.message);
+            console.error('Script injection failed:', chrome.runtime.lastError.message);
             return;
           }
           if (results?.[0]?.result) {
@@ -183,29 +203,28 @@ const App: React.FC = () => {
     });
   }, []);
 
-  // Perform RAG query when selected text is available
   useEffect(() => {
     if (selectedText.trim().length <= 3) return;
 
     setIsQuerying(true);
-    setQueryError("");
-    setRagAnswer("");
+    setQueryError('');
+    setRagAnswer('');
     setRagSources([]);
-    setTranslatedText("");
-    setSimplifiedText("");
+    setTranslatedText('');
+    setSimplifiedText('');
 
     ragQuery(selectedText, token)
       .then((result) => {
         setRagAnswer(result.answer);
         setRagSources(result.sources ?? []);
-        // Refresh history after new query
-        if (token) {
+        if (token && userId) {
+          saveRecentActivity(token, userId, selectedText, result.answer);
           fetchQueryHistory(token).then(setQueryHistory).catch(console.error);
         }
       })
       .catch((err) => {
-        console.error("RAG error:", err);
-        setQueryError("Failed to search documents. Is the backend running?");
+        console.error('RAG error:', err);
+        setQueryError('Failed to search documents. Is the backend running?');
       })
       .finally(() => setIsQuerying(false));
   }, [selectedText]);
@@ -217,7 +236,7 @@ const App: React.FC = () => {
       const result = await translateText(ragAnswer, token);
       setTranslatedText(result);
     } catch (err) {
-      console.error("Translation error:", err);
+      console.error('Translation error:', err);
     } finally {
       setIsTranslating(false);
     }
@@ -230,15 +249,17 @@ const App: React.FC = () => {
       const result = await simplifyText(ragAnswer, token);
       setSimplifiedText(result);
     } catch (err) {
-      console.error("Simplify error:", err);
+      console.error('Simplify error:', err);
     } finally {
       setIsSimplifying(false);
     }
   };
 
   const handleLogout = () => {
-    storageRemove("authToken");
+    storageRemove('authToken');
+    storageRemove('userId');
     setToken(null);
+    setUserId(null);
     setQueryHistory([]);
     setShowLogin(false);
   };
@@ -249,180 +270,210 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-[500px] h-fit bg-background text-foreground">
-      {/* Header with auth controls */}
-      <div className="flex items-center justify-between p-4 border-b">
+    <Box w={500} style={{ minHeight: 'fit-content' }}>
+      {/* Header */}
+      <Group
+        justify="space-between"
+        p="sm"
+        style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}
+      >
         <Header />
-        <div className="flex items-center gap-2">
+        <Group gap="xs">
           {token ? (
             <>
-              <button
+              <ActionIcon
+                variant={showHistory ? 'light' : 'subtle'}
+                color={showHistory ? 'indigo' : 'gray'}
+                size="sm"
                 onClick={() => setShowHistory(!showHistory)}
-                className={cn(
-                  "p-1.5 rounded-md transition-colors",
-                  showHistory ? "bg-purple-100 text-purple-700" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
                 title="Chat history"
               >
-                <History className="w-4 h-4" />
-              </button>
-              <button
+                <IconHistory size={16} />
+              </ActionIcon>
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                size="sm"
                 onClick={handleLogout}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 title="Log out"
               >
-                <LogOut className="w-4 h-4" />
-              </button>
+                <IconLogout size={16} />
+              </ActionIcon>
             </>
           ) : (
-            <button
+            <Button
+              size="xs"
+              variant={showLogin ? 'light' : 'filled'}
               onClick={() => setShowLogin(!showLogin)}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors"
             >
               Log in
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
+        </Group>
+      </Group>
 
-      <main className="p-4 space-y-4">
+      <Stack p="sm" gap="sm">
         {/* Login form */}
         {showLogin && !token && (
-          <Card>
-            <CardContent className="pt-4">
-              <LoginForm onLoginSuccess={handleLoginSuccess} />
-            </CardContent>
+          <Card withBorder padding="sm">
+            <LoginForm onLoginSuccess={handleLoginSuccess} />
           </Card>
         )}
 
         {/* Chat history */}
         {showHistory && token && queryHistory.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <div>
+            <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb="xs">
               Recent Queries
-            </p>
+            </Text>
             <ChatHistory history={queryHistory} />
           </div>
         )}
 
         {/* RAG Answer */}
-        <Card className={cn(
-          "transition-all duration-300",
-          isQuerying ? "opacity-50" : "opacity-100"
-        )}>
-          <CardContent className="pt-4">
-            {isQuerying ? (
-              <div className="flex flex-col items-center gap-2 py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Searching documents...</p>
-              </div>
-            ) : queryError ? (
-              <p className="text-sm text-red-500">{queryError}</p>
-            ) : ragAnswer ? (
-              <div className="space-y-4">
-                {/* Answer */}
-                <p className="text-[15px] leading-relaxed">{ragAnswer}</p>
+        <Card
+          withBorder
+          padding="sm"
+          style={{
+            opacity: isQuerying ? 0.5 : 1,
+            transition: 'opacity 200ms',
+          }}
+        >
+          {isQuerying ? (
+            <Center py="xl">
+              <Stack align="center" gap="xs">
+                <Loader size="md" color="indigo" />
+                <Text size="sm" c="dimmed">
+                  Searching documents...
+                </Text>
+              </Stack>
+            </Center>
+          ) : queryError ? (
+            <Text size="sm" c="red">
+              {queryError}
+            </Text>
+          ) : ragAnswer ? (
+            <Stack gap="sm">
+              <Text size="sm" style={{ lineHeight: 1.7 }}>
+                {ragAnswer}
+              </Text>
 
-                {/* Action buttons (translate & simplify) */}
-                {token && (
-                  <ActionButtons
-                    onTranslate={handleTranslate}
-                    onSimplify={handleSimplify}
-                    isTranslating={isTranslating}
-                    isSimplifying={isSimplifying}
-                  />
-                )}
+              {token && (
+                <ActionButtons
+                  onTranslate={handleTranslate}
+                  onSimplify={handleSimplify}
+                  isTranslating={isTranslating}
+                  isSimplifying={isSimplifying}
+                />
+              )}
 
-                {/* Simplified text */}
-                {simplifiedText && (
-                  <div className="space-y-1 border-t pt-3">
-                    <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
-                      Simplified
-                    </p>
-                    <p className="text-sm leading-relaxed">{simplifiedText}</p>
-                  </div>
-                )}
+              {simplifiedText && (
+                <Paper
+                  p="sm"
+                  radius="md"
+                  bg="var(--mantine-color-blue-0)"
+                  style={{ borderTop: '1px solid var(--mantine-color-blue-2)' }}
+                >
+                  <Text size="xs" fw={600} tt="uppercase" c="blue" mb={4}>
+                    Simplified
+                  </Text>
+                  <Text size="sm" style={{ lineHeight: 1.6 }}>
+                    {simplifiedText}
+                  </Text>
+                </Paper>
+              )}
 
-                {/* Kinyarwanda translation */}
-                {translatedText && (
-                  <div className="space-y-1 border-t pt-3">
-                    <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">
-                      Kinyarwanda
-                    </p>
-                    <p className="text-sm leading-relaxed">{translatedText}</p>
-                  </div>
-                )}
+              {translatedText && (
+                <Paper
+                  p="sm"
+                  radius="md"
+                  bg="var(--mantine-color-indigo-0)"
+                  style={{ borderTop: '1px solid var(--mantine-color-indigo-2)' }}
+                >
+                  <Text size="xs" fw={600} tt="uppercase" c="indigo" mb={4}>
+                    Kinyarwanda
+                  </Text>
+                  <Text size="sm" style={{ lineHeight: 1.6 }}>
+                    {translatedText}
+                  </Text>
+                </Paper>
+              )}
 
-                {/* Sources */}
-                {ragSources.length > 0 && (
-                  <div className="space-y-2 border-t pt-3">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Sources
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {ragSources.map((source, i) => (
-                        <SourceCard
-                          key={`${source.documentId}-${i}`}
-                          filename={source.filename}
-                          score={source.score}
-                          documentUrl={source.documentUrl}
-                          onClick={() => setSelectedSource(source)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2 py-8">
-                <FileText className="w-8 h-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
+              {ragSources.length > 0 && (
+                <div>
+                  <Divider mb="xs" />
+                  <Text size="xs" fw={600} tt="uppercase" c="dimmed" mb="xs">
+                    Sources
+                  </Text>
+                  <Group gap="xs">
+                    {ragSources.map((source, i) => (
+                      <SourceCard
+                        key={`${source.documentId}-${i}`}
+                        filename={source.filename}
+                        score={source.score}
+                        documentUrl={source.documentUrl}
+                        onClick={() => setSelectedSource(source)}
+                      />
+                    ))}
+                  </Group>
+                </div>
+              )}
+            </Stack>
+          ) : (
+            <Center py="xl">
+              <Stack align="center" gap="xs">
+                <IconFileText size={32} color="var(--mantine-color-gray-4)" />
+                <Text size="sm" c="dimmed" ta="center">
                   Select text on any page to search your documents
-                </p>
+                </Text>
                 {!token && (
-                  <p className="text-xs text-muted-foreground">
+                  <Text size="xs" c="dimmed">
                     Log in to translate, simplify, and view history
-                  </p>
+                  </Text>
                 )}
-              </div>
-            )}
-          </CardContent>
+              </Stack>
+            </Center>
+          )}
         </Card>
-      </main>
+      </Stack>
 
       {/* Source detail modal */}
-      <Dialog open={!!selectedSource} onOpenChange={(open) => { if (!open) setSelectedSource(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              {selectedSource?.filename}
-            </DialogTitle>
-            <DialogDescription>
-              Relevance: {selectedSource ? Math.round(selectedSource.score * 100) : 0}%
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[300px] overflow-y-auto">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">
-              {selectedSource?.chunkText}
-            </p>
-          </div>
-          {selectedSource?.documentUrl && (
-            <div className="pt-4 border-t">
-              <a
-                href={selectedSource.documentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 hover:underline"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Open full document
-              </a>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+      <Modal
+        opened={!!selectedSource}
+        onClose={() => setSelectedSource(null)}
+        title={
+          <Group gap="xs">
+            <IconFileText size={16} />
+            <Text fw={600}>{selectedSource?.filename}</Text>
+          </Group>
+        }
+        size="md"
+        centered
+      >
+        <Text size="xs" c="dimmed" mb="sm">
+          Relevance: {selectedSource ? Math.round(selectedSource.score * 100) : 0}%
+        </Text>
+        <ScrollArea mah={300}>
+          <Text size="sm" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+            {selectedSource?.chunkText}
+          </Text>
+        </ScrollArea>
+        {selectedSource?.documentUrl && (
+          <Anchor
+            href={selectedSource.documentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            size="sm"
+            c="indigo"
+            mt="md"
+            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <IconExternalLink size={14} />
+            Open full document
+          </Anchor>
+        )}
+      </Modal>
+    </Box>
   );
 };
 

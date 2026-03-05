@@ -1,33 +1,33 @@
 import {
-  LayoutDashboard,
-  MessageSquare,
-  Users,
-  BookOpen,
-  UserCircle,
-  Settings,
-} from "lucide-react";
+  IconLayoutDashboard,
+  IconMessageCircle,
+  IconUsers,
+  IconBook,
+  IconUserCircle,
+  IconSettings,
+} from '@tabler/icons-react';
 
 const menuConfig = {
   STUDENT: [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "Ask AI", icon: MessageSquare, path: "/dashboard/query" },
-    { type: "recent-activities" },
-    { label: "Profile", icon: UserCircle, path: "/dashboard/profile" },
-    { label: "Settings", icon: Settings, path: "/dashboard/settings" },
+    { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard' },
+    { label: 'Ask AI', icon: IconMessageCircle, path: '/dashboard/query' },
+    { type: 'recent-activities' },
+    { label: 'Profile', icon: IconUserCircle, path: '/dashboard/profile' },
+    { label: 'Settings', icon: IconSettings, path: '/dashboard/settings' },
   ],
   TEACHER: [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "Ask AI", icon: MessageSquare, path: "/dashboard/query" },
-    { label: "Courses", icon: BookOpen, path: "/dashboard/courses" },
-    { label: "Profile", icon: UserCircle, path: "/dashboard/profile" },
-    { label: "Settings", icon: Settings, path: "/dashboard/settings" },
+    { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard' },
+    { label: 'Ask AI', icon: IconMessageCircle, path: '/dashboard/query' },
+    { label: 'Courses', icon: IconBook, path: '/dashboard/courses' },
+    { label: 'Profile', icon: IconUserCircle, path: '/dashboard/profile' },
+    { label: 'Settings', icon: IconSettings, path: '/dashboard/settings' },
   ],
   ADMIN: [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "Ask AI", icon: MessageSquare, path: "/dashboard/query" },
-    { label: "Courses", icon: BookOpen, path: "/dashboard/courses" },
-    { label: "Users", icon: Users, path: "/dashboard/users" },
-    { label: "Settings", icon: Settings, path: "/dashboard/settings" },
+    { label: 'Dashboard', icon: IconLayoutDashboard, path: '/dashboard' },
+    { label: 'Ask AI', icon: IconMessageCircle, path: '/dashboard/query' },
+    { label: 'Courses', icon: IconBook, path: '/dashboard/courses' },
+    { label: 'Users', icon: IconUsers, path: '/dashboard/users' },
+    { label: 'Settings', icon: IconSettings, path: '/dashboard/settings' },
   ],
 };
 

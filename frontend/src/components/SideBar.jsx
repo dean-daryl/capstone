@@ -1,106 +1,166 @@
-import { Link, useLocation } from "react-router-dom";
-import { Bot, CircleUserRound, LogOut, PanelRightClose, X } from "lucide-react";
-import RecentActivities from "./recent-activity/RecentActivities.jsx";
-import menuConfig from "../config/menuConfig.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import { Link, useLocation } from 'react-router-dom';
+import {
+  AppShell,
+  Group,
+  Text,
+  UnstyledButton,
+  Stack,
+  Divider,
+  Avatar,
+  Box,
+  ActionIcon,
+  ScrollArea,
+} from '@mantine/core';
+import {
+  IconRobot,
+  IconX,
+  IconLayoutSidebarLeftExpand,
+  IconLogout,
+} from '@tabler/icons-react';
+import RecentActivities from './recent-activity/RecentActivities.jsx';
+import menuConfig from '../config/menuConfig.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
-function SideBar({ isOpen, setIsOpen }) {
+function SideBar({ opened, setOpened }) {
   const { user, role, logout } = useAuth();
   const location = useLocation();
-  const displayName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "";
+  const displayName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
   const menuItems = menuConfig[role] || menuConfig.STUDENT;
 
   return (
     <>
-      <div
-        className={`fixed top-0 left-0 h-screen flex flex-col bg-gray-950 text-gray-100 border-r border-gray-800/50 transition-all ${
-          isOpen ? "w-[300px]" : "w-0"
-        } overflow-hidden z-40`}
-      >
-        {isOpen && (
-          <>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800/50">
-              <Link to="/dashboard" className="flex items-center gap-2.5">
-                <Bot size={28} className="text-purple-400" />
-                <span className="text-lg font-semibold text-white tracking-tight">
-                  SomaTek AI
-                </span>
-              </Link>
-              <button
-                className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
+      <AppShell.Navbar p="sm" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <Group justify="space-between" mb="sm">
+          <UnstyledButton component={Link} to="/dashboard">
+            <Group gap="xs">
+              <IconRobot size={26} color="var(--mantine-color-indigo-5)" />
+              <Text fw={700} size="lg">SomaTek AI</Text>
+            </Group>
+          </UnstyledButton>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="sm"
+            onClick={() => setOpened(false)}
+          >
+            <IconX size={16} />
+          </ActionIcon>
+        </Group>
 
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto px-3 py-4">
-              <div className="space-y-1">
-                {menuItems.map((item, index) => {
-                  if (item.type === "recent-activities") {
-                    return (
-                      <div key="recent-activities" className="mt-6 mb-2">
-                        <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                          Recent Activity
-                        </p>
-                        <RecentActivities />
-                      </div>
-                    );
-                  }
-                  const Icon = item.icon;
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <Link
-                      key={index}
-                      to={item.path}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? "bg-purple-500/10 text-purple-400"
-                          : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
-                      }`}
+        <Divider mb="sm" />
+
+        {/* Navigation */}
+        <ScrollArea style={{ flex: 1 }} scrollbarSize={6}>
+          <Stack gap={2}>
+            {menuItems.map((item, index) => {
+              if (item.type === 'recent-activities') {
+                return (
+                  <Box key="recent-activities" mt="lg" mb="xs">
+                    <Text
+                      size="xs"
+                      fw={600}
+                      tt="uppercase"
+                      c="dimmed"
+                      px="sm"
+                      mb="xs"
                     >
-                      <Icon className={`w-[18px] h-[18px] ${isActive ? "text-purple-400" : "text-gray-500"}`} />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            </nav>
-
-            {/* User footer */}
-            <div className="border-t border-gray-800/50 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                    <CircleUserRound className="w-4 h-4 text-purple-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-200 truncate">{displayName}</p>
-                    <p className="text-xs text-gray-500">{role}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={logout}
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
-                  title="Logout"
+                      Recent Activity
+                    </Text>
+                    <RecentActivities />
+                  </Box>
+                );
+              }
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <UnstyledButton
+                  key={index}
+                  component={Link}
+                  to={item.path}
+                  px="sm"
+                  py={8}
+                  style={(theme) => ({
+                    borderRadius: theme.radius.md,
+                    backgroundColor: isActive
+                      ? 'var(--mantine-color-indigo-0)'
+                      : 'transparent',
+                    color: isActive
+                      ? 'var(--mantine-color-indigo-7)'
+                      : 'var(--mantine-color-gray-7)',
+                    '&:hover': {
+                      backgroundColor: isActive
+                        ? 'var(--mantine-color-indigo-0)'
+                        : 'var(--mantine-color-gray-0)',
+                    },
+                  })}
                 >
-                  <LogOut className="w-4 h-4 text-gray-500" />
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+                  <Group gap="sm">
+                    <Icon
+                      size={18}
+                      style={{
+                        color: isActive
+                          ? 'var(--mantine-color-indigo-6)'
+                          : 'var(--mantine-color-gray-5)',
+                      }}
+                    />
+                    <Text size="sm" fw={isActive ? 600 : 500}>
+                      {item.label}
+                    </Text>
+                  </Group>
+                </UnstyledButton>
+              );
+            })}
+          </Stack>
+        </ScrollArea>
 
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed top-4 left-4 p-2 z-50 bg-gray-900 hover:bg-gray-800 rounded-lg border border-gray-800 transition-colors"
+        {/* User footer */}
+        <Divider mt="sm" mb="sm" />
+        <Group justify="space-between">
+          <Group gap="sm">
+            <Avatar
+              size="sm"
+              radius="xl"
+              color="indigo"
+              variant="light"
+            >
+              {displayName ? displayName[0].toUpperCase() : 'U'}
+            </Avatar>
+            <div>
+              <Text size="sm" fw={500} lh={1.2}>
+                {displayName}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {role}
+              </Text>
+            </div>
+          </Group>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            onClick={logout}
+            title="Logout"
+          >
+            <IconLogout size={18} />
+          </ActionIcon>
+        </Group>
+      </AppShell.Navbar>
+
+      {!opened && (
+        <ActionIcon
+          variant="light"
+          color="gray"
+          size="lg"
+          onClick={() => setOpened(true)}
+          style={{
+            position: 'fixed',
+            top: 16,
+            left: 16,
+            zIndex: 100,
+          }}
         >
-          <PanelRightClose size={18} className="text-gray-400" />
-        </button>
+          <IconLayoutSidebarLeftExpand size={20} />
+        </ActionIcon>
       )}
     </>
   );

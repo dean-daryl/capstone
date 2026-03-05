@@ -1,22 +1,46 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Trash2, Eye, FileText, BookOpen, Loader2, RefreshCw } from 'lucide-react';
+import {
+  Container,
+  Title,
+  Text,
+  Card,
+  Group,
+  Button,
+  Table,
+  Badge,
+  Center,
+  Loader,
+  Stack,
+  ActionIcon,
+  Modal,
+  Anchor,
+  FileButton,
+} from '@mantine/core';
+import {
+  IconArrowLeft,
+  IconUpload,
+  IconTrash,
+  IconEye,
+  IconFileText,
+  IconBook,
+  IconRefresh,
+} from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { useAuth } from '../context/AuthContext';
 import { getCourseById, deleteCourse, getCourseDocuments } from '../api/courseService';
 import { uploadDocument, deleteDocument, getDocumentViewUrl, reprocessDocument } from '../api/ragService';
-import { toast } from 'sonner';
 
 function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
-  const fileInputRef = useRef(null);
 
   const [course, setCourse] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // 'course' | docId | null
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const canManage = role === 'TEACHER' || role === 'ADMIN';
 
@@ -30,7 +54,7 @@ function CourseDetailPage() {
       if (courseRes?.data) setCourse(courseRes.data);
       if (docsRes?.data) setDocuments(docsRes.data);
     } catch {
-      toast.error('Failed to load course');
+      notifications.show({ message: 'Failed to load course', color: 'red' });
     } finally {
       setLoading(false);
     }
@@ -40,7 +64,6 @@ function CourseDetailPage() {
     fetchData();
   }, [id]);
 
-  // Poll for status updates when any document is still processing
   useEffect(() => {
     const hasProcessing = documents.some(
       (d) => d.status === 'UPLOADING' || d.status === 'PROCESSING'
@@ -59,53 +82,50 @@ function CourseDetailPage() {
     return () => clearInterval(interval);
   }, [documents, id]);
 
-  const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleUpload = async (file) => {
     if (!file) return;
     setUploading(true);
     try {
-      const res = await uploadDocument(file, id);
-      toast.success('Document uploaded — processing in background');
-      // Refresh documents list to show the new doc with PROCESSING status
+      await uploadDocument(file, id);
+      notifications.show({ message: 'Document uploaded — processing in background', color: 'green' });
       const docsRes = await getCourseDocuments(id);
       if (docsRes?.data) setDocuments(docsRes.data);
     } catch {
-      toast.error('Failed to upload document');
+      notifications.show({ message: 'Failed to upload document', color: 'red' });
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleDeleteDocument = async (docId) => {
     try {
       await deleteDocument(docId);
-      toast.success('Document deleted');
+      notifications.show({ message: 'Document deleted', color: 'green' });
       setDeleteConfirm(null);
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
     } catch {
-      toast.error('Failed to delete document');
+      notifications.show({ message: 'Failed to delete document', color: 'red' });
     }
   };
 
   const handleDeleteCourse = async () => {
     try {
       await deleteCourse(id);
-      toast.success('Course deleted');
+      notifications.show({ message: 'Course deleted', color: 'green' });
       navigate('/dashboard/courses');
     } catch {
-      toast.error('Failed to delete course');
+      notifications.show({ message: 'Failed to delete course', color: 'red' });
     }
   };
 
   const handleReprocess = async (docId) => {
     try {
       await reprocessDocument(docId);
-      toast.success('Reprocessing started');
+      notifications.show({ message: 'Reprocessing started', color: 'green' });
       const docsRes = await getCourseDocuments(id);
       if (docsRes?.data) setDocuments(docsRes.data);
     } catch {
-      toast.error('Failed to reprocess document');
+      notifications.show({ message: 'Failed to reprocess document', color: 'red' });
     }
   };
 
@@ -116,16 +136,16 @@ function CourseDetailPage() {
         window.open(res.data.url, '_blank');
       }
     } catch {
-      toast.error('Failed to get document URL');
+      notifications.show({ message: 'Failed to get document URL', color: 'red' });
     }
   };
 
   const statusColor = (status) => {
     switch (status) {
-      case 'COMPLETED': return 'bg-green-600/20 text-green-300';
-      case 'PROCESSING': case 'UPLOADING': return 'bg-yellow-600/20 text-yellow-300';
-      case 'FAILED': return 'bg-red-600/20 text-red-300';
-      default: return 'bg-gray-600/20 text-gray-300';
+      case 'COMPLETED': return 'green';
+      case 'PROCESSING': case 'UPLOADING': return 'yellow';
+      case 'FAILED': return 'red';
+      default: return 'gray';
     }
   };
 
@@ -138,186 +158,201 @@ function CourseDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-24">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-      </div>
+      <Center py={100}>
+        <Loader color="indigo" />
+      </Center>
     );
   }
 
   if (!course) {
     return (
-      <div className="py-8 px-4 text-center text-gray-400">
-        <p>Course not found.</p>
-        <button onClick={() => navigate('/dashboard/courses')} className="mt-4 text-purple-400 hover:underline">
-          Back to courses
-        </button>
-      </div>
+      <Center py={100}>
+        <Stack align="center" gap="xs">
+          <Text c="dimmed">Course not found.</Text>
+          <Anchor onClick={() => navigate('/dashboard/courses')} c="indigo">
+            Back to courses
+          </Anchor>
+        </Stack>
+      </Center>
     );
   }
 
   return (
-    <div className="py-8 px-4">
+    <Container fluid p="lg">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <Group justify="space-between" mb="lg">
         <div>
-          <button
+          <Button
+            variant="subtle"
+            color="gray"
+            size="sm"
+            leftSection={<IconArrowLeft size={16} />}
             onClick={() => navigate('/dashboard/courses')}
-            className="flex items-center gap-1 text-gray-400 hover:text-gray-200 mb-3 text-sm"
+            mb="xs"
+            px={0}
           >
-            <ArrowLeft className="w-4 h-4" /> Back to courses
-          </button>
-          <div className="flex items-center gap-3">
-            <BookOpen className="w-6 h-6 text-purple-400" />
+            Back to courses
+          </Button>
+          <Group gap="sm">
+            <IconBook size={24} color="var(--mantine-color-indigo-6)" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-100">{course.name}</h1>
-              <div className="flex gap-4 text-sm text-gray-400 mt-1">
-                <span>Code: {course.code}</span>
-                {course.cohort && <span>Cohort: {course.cohort}</span>}
-                {course.facilitatorName && <span>Facilitator: {course.facilitatorName}</span>}
-              </div>
+              <Title order={2}>{course.name}</Title>
+              <Group gap="md" mt={4}>
+                <Text size="sm" c="dimmed">Code: {course.code}</Text>
+                {course.cohort && <Text size="sm" c="dimmed">Cohort: {course.cohort}</Text>}
+                {course.facilitatorName && <Text size="sm" c="dimmed">Facilitator: {course.facilitatorName}</Text>}
+              </Group>
             </div>
-          </div>
+          </Group>
         </div>
         {canManage && (
-          <button
+          <Button
+            variant="subtle"
+            color="red"
+            size="sm"
+            leftSection={<IconTrash size={16} />}
             onClick={() => setDeleteConfirm('course')}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-colors"
           >
-            <Trash2 className="w-4 h-4" /> Delete Course
-          </button>
+            Delete Course
+          </Button>
         )}
-      </div>
+      </Group>
 
       {/* Upload Section */}
       {canManage && (
-        <div className="bg-gray-800 rounded-xl p-4 mb-6">
-          <div className="flex items-center gap-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleUpload}
-              accept=".pdf,.txt,.docx,.pptx"
-              className="hidden"
-              id="file-upload"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-            >
-              <Upload className="w-4 h-4" />
-              {uploading ? 'Uploading...' : 'Upload Document'}
-            </button>
-            <span className="text-sm text-gray-400">Supported: PDF, TXT, DOCX, PPTX</span>
-          </div>
-        </div>
+        <Card shadow="sm" padding="md" withBorder mb="lg">
+          <Group>
+            <FileButton onChange={handleUpload} accept=".pdf,.txt,.docx,.pptx">
+              {(props) => (
+                <Button
+                  {...props}
+                  leftSection={<IconUpload size={16} />}
+                  loading={uploading}
+                >
+                  Upload Document
+                </Button>
+              )}
+            </FileButton>
+            <Text size="sm" c="dimmed">Supported: PDF, TXT, DOCX, PPTX</Text>
+          </Group>
+        </Card>
       )}
 
       {/* Documents Table */}
-      <div className="bg-gray-800 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-purple-400" />
-            Documents ({documents.length})
-          </h2>
-        </div>
+      <Card shadow="sm" padding={0} withBorder>
+        <Group p="md" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+          <IconFileText size={20} color="var(--mantine-color-indigo-6)" />
+          <Title order={4}>Documents ({documents.length})</Title>
+        </Group>
+
         {documents.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <FileText className="w-10 h-10 mx-auto mb-2 text-gray-600" />
-            <p>No documents uploaded yet.</p>
-          </div>
+          <Center py="xl">
+            <Stack align="center" gap="xs">
+              <IconFileText size={36} color="var(--mantine-color-gray-4)" />
+              <Text c="dimmed">No documents uploaded yet.</Text>
+            </Stack>
+          </Center>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-700">
-                  <th className="px-4 py-3">Filename</th>
-                  <th className="px-4 py-3">Size</th>
-                  <th className="px-4 py-3">Chunks</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((doc) => (
-                  <tr key={doc.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
-                    <td className="px-4 py-3 text-sm text-gray-200">{doc.filename}</td>
-                    <td className="px-4 py-3 text-sm text-gray-400">{formatSize(doc.fileSizeBytes)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-400">{doc.chunkCount ?? '—'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-400">
+          <Table striped highlightOnHover>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Filename</Table.Th>
+                <Table.Th>Size</Table.Th>
+                <Table.Th>Chunks</Table.Th>
+                <Table.Th>Date</Table.Th>
+                <Table.Th>Actions</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {documents.map((doc) => (
+                <Table.Tr key={doc.id}>
+                  <Table.Td>
+                    <Text size="sm">{doc.filename}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">{formatSize(doc.fileSizeBytes)}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">{doc.chunkCount ?? '—'}</Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" c="dimmed">
                       {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString() : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleViewDocument(doc.id)}
-                          className="p-1.5 text-gray-400 hover:text-purple-400 rounded transition-colors"
-                          title="View"
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap="xs">
+                      <ActionIcon
+                        variant="subtle"
+                        color="indigo"
+                        onClick={() => handleViewDocument(doc.id)}
+                        title="View"
+                      >
+                        <IconEye size={16} />
+                      </ActionIcon>
+                      {canManage && doc.status === 'FAILED' && (
+                        <ActionIcon
+                          variant="subtle"
+                          color="yellow"
+                          onClick={() => handleReprocess(doc.id)}
+                          title="Reprocess"
                         >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {canManage && doc.status === 'FAILED' && (
-                          <button
-                            onClick={() => handleReprocess(doc.id)}
-                            className="p-1.5 text-gray-400 hover:text-yellow-400 rounded transition-colors"
-                            title="Reprocess"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </button>
-                        )}
-                        {canManage && (
-                          <button
-                            onClick={() => setDeleteConfirm(doc.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-400 rounded transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          <IconRefresh size={16} />
+                        </ActionIcon>
+                      )}
+                      {canManage && (
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          onClick={() => setDeleteConfirm(doc.id)}
+                          title="Delete"
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      )}
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
         )}
-      </div>
+      </Card>
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-lg font-bold text-gray-100 mb-2">
-              {deleteConfirm === 'course' ? 'Delete Course' : 'Delete Document'}
-            </h2>
-            <p className="text-gray-400 mb-4">
-              {deleteConfirm === 'course'
-                ? 'This will permanently delete the course and all its documents. This action cannot be undone.'
-                : 'This will permanently delete this document. This action cannot be undone.'}
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() =>
-                  deleteConfirm === 'course'
-                    ? handleDeleteCourse()
-                    : handleDeleteDocument(deleteConfirm)
-                }
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Modal
+        opened={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title={
+          <Title order={4}>
+            {deleteConfirm === 'course' ? 'Delete Course' : 'Delete Document'}
+          </Title>
+        }
+        centered
+        size="sm"
+      >
+        <Text c="dimmed" mb="md">
+          {deleteConfirm === 'course'
+            ? 'This will permanently delete the course and all its documents. This action cannot be undone.'
+            : 'This will permanently delete this document. This action cannot be undone.'}
+        </Text>
+        <Group grow>
+          <Button variant="default" onClick={() => setDeleteConfirm(null)}>
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            onClick={() =>
+              deleteConfirm === 'course'
+                ? handleDeleteCourse()
+                : handleDeleteDocument(deleteConfirm)
+            }
+          >
+            Delete
+          </Button>
+        </Group>
+      </Modal>
+    </Container>
   );
 }
 

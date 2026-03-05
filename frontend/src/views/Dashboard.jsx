@@ -1,20 +1,26 @@
-import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
-import SideBar from '../components/SideBar'
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { AppShell } from '@mantine/core';
+import SideBar from '../components/SideBar';
 
 function Dashboard() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [opened, setOpened] = useState(true);
 
   return (
-    <div className='flex h-screen w-full'>
-      <SideBar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      <div className={`flex-1 transition-all duration-100 ${isSidebarOpen ? 'ml-[300px]' : 'ml-0'}`}>
-        <main className='h-full overflow-auto '>
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  )
+    <AppShell
+      navbar={{
+        width: 280,
+        breakpoint: 'sm',
+        collapsed: { mobile: !opened, desktop: !opened },
+      }}
+      padding={0}
+    >
+      <SideBar opened={opened} setOpened={setOpened} />
+      <AppShell.Main>
+        <Outlet />
+      </AppShell.Main>
+    </AppShell>
+  );
 }
 
-export default Dashboard
+export default Dashboard;

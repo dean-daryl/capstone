@@ -1,28 +1,41 @@
 // Content script injected into the frontend app pages.
 // Syncs the JWT token from the frontend's localStorage to chrome.storage.local
 // so the extension popup can reuse the same session.
+//
+// Content scripts run in an isolated world and cannot access the page's
+// localStorage directly. We inject a small script into the page context
+// that posts the token value back to us via window.postMessage.
+
+function requestSync() {
+  const script = document.createElement("script");
+  script.textContent = `
+    (function() {
+      var token = localStorage.getItem("token");
+      var userId = localStorage.getItem("userId");
+      window.postMessage({ type: "SOMATEK_TOKEN_SYNC", token: token, userId: userId }, "*");
+    })();
+  `;
+  document.documentElement.appendChild(script);
+  script.remove();
+}
 
 let lastToken = null;
 
-function syncToken() {
-  const token = localStorage.getItem("token");
+window.addEventListener("message", (event) => {
+  if (event.source !== window || event.data?.type !== "SOMATEK_TOKEN_SYNC") return;
+
+  const token = event.data.token;
+  const userId = event.data.userId;
   if (token === lastToken) return;
   lastToken = token;
 
   if (token) {
-    chrome.storage.local.set({ authToken: token });
+    chrome.storage.local.set({ authToken: token, userId: userId });
   } else {
-    chrome.storage.local.remove(["authToken"]);
+    chrome.storage.local.remove(["authToken", "userId"]);
   }
-}
+});
 
-// Sync immediately on load
-syncToken();
-
-// Poll every 2 seconds to catch login/logout changes.
-// Content scripts run in an isolated world so we can't intercept
-// the page's localStorage.setItem calls directly.
-setInterval(syncToken, 2000);
-
-// Also catch cross-tab changes
-window.addEventListener("storage", syncToken);
+// Sync on load and poll every 2 seconds
+requestSync();
+setInterval(requestSync, 2000);

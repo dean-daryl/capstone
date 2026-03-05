@@ -23,12 +23,12 @@
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
-      "matches": ["*://localhost/*"],
+      "matches": ["*://localhost/*", "http://89.167.119.247/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:8080 https://api.groq.com"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:11434 http://localhost:8080 http://89.167.119.247 https://*.yourdomain.com https://api.groq.com"
   }
 }

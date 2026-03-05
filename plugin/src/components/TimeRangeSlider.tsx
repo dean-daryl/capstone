@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import * as SliderPrimitive from '@radix-ui/react-slider';
-import { cn } from '../lib/util';
+import { RangeSlider } from '@mantine/core';
 
 interface TimeRangeSliderProps {
   min: number;
@@ -8,7 +7,6 @@ interface TimeRangeSliderProps {
   value: number[];
   onValueChange: (value: number[]) => void;
   step?: number;
-  className?: string;
 }
 
 export function TimeRangeSlider({
@@ -17,38 +15,25 @@ export function TimeRangeSlider({
   step = 1,
   value,
   onValueChange,
-  className,
 }: TimeRangeSliderProps) {
-  const [localValue, setLocalValue] = useState(value);
+  const [localValue, setLocalValue] = useState<[number, number]>([value[0], value[1]]);
 
   useEffect(() => {
-    setLocalValue(value);
+    setLocalValue([value[0], value[1]]);
   }, [value]);
 
   return (
-    <SliderPrimitive.Root
+    <RangeSlider
       min={min}
       max={max}
       step={step}
       value={localValue}
-      onValueChange={(newValue) => {
-        setLocalValue(newValue);
-        onValueChange(newValue);
+      onChange={(val) => {
+        setLocalValue(val);
+        onValueChange(val);
       }}
-      className={cn(
-        'relative flex w-full touch-none select-none items-center',
-        className
-      )}
-    >
-      <SliderPrimitive.Track className="relative h-2 w-full grow rounded-full bg-gray-300">
-  <SliderPrimitive.Range className="absolute h-full rounded-full bg-purple-300" />
-    </SliderPrimitive.Track>
-<SliderPrimitive.Thumb
-  className="block h-5 w-5 rounded-full border-2 border-purple-bg-purple-300 bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bg-purple-300 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-/>
-<SliderPrimitive.Thumb
-  className="block h-5 w-5 rounded-full border-2 border-purple-bg-purple-300 bg-white ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-bg-purple-300 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-/>
-    </SliderPrimitive.Root>
+      color="indigo"
+      size="sm"
+    />
   );
 }
