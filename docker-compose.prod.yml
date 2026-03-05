@@ -78,36 +78,9 @@ services:
   # ML SERVICES LAYER
   # =====================================
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: somatek-ollama
-    restart: unless-stopped
-    environment:
-      - OLLAMA_ORIGINS=*
-      - OLLAMA_NUM_PARALLEL=1
-      - OLLAMA_MAX_LOADED_MODELS=2
-    volumes:
-      - ./data/ollama:/root/.ollama
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-    healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q nomic-embed-text"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 60s
-    networks:
-      - somatek-network
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        sleep 10
-        ollama pull llama3.2:3b
-        ollama pull nomic-embed-text
-        wait
+  # Ollama runs natively via systemd (not in Docker) for better performance.
+  # Managed by: systemctl {start|stop|restart} ollama
+  # Config override: /etc/systemd/system/ollama.service.d/override.conf
 
   qdrant:
     image: qdrant/qdrant:v1.12.1
@@ -175,14 +148,14 @@ services:
       dockerfile: Dockerfile
     container_name: somatek-backend
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
       mongodb:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
       textcat:
         condition: service_started
@@ -200,7 +173,7 @@ services:
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - TEXTCAT_SERVICE_URL=http://textcat:8000
-      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - NLLB_SERVICE_URL=http://nllb-translate:8000
     volumes:
       - ./logs:/app/logs
@@ -209,7 +182,7 @@ services:
         limits:
           memory: 2G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
       interval: 30s
       timeout: 10s
       retries: 5
