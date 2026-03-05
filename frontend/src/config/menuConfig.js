@@ -3,7 +3,6 @@ import {
   MessageSquare,
   Users,
   BookOpen,
-  BarChart3,
   UserCircle,
   Settings,
 } from "lucide-react";
@@ -20,7 +19,6 @@ const menuConfig = {
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
     { label: "Ask AI", icon: MessageSquare, path: "/dashboard/query" },
     { label: "Courses", icon: BookOpen, path: "/dashboard/courses" },
-    { label: "Analytics", icon: BarChart3, path: "/dashboard" },
     { label: "Profile", icon: UserCircle, path: "/dashboard/profile" },
     { label: "Settings", icon: Settings, path: "/dashboard/settings" },
   ],
@@ -29,7 +27,6 @@ const menuConfig = {
     { label: "Ask AI", icon: MessageSquare, path: "/dashboard/query" },
     { label: "Courses", icon: BookOpen, path: "/dashboard/courses" },
     { label: "Users", icon: Users, path: "/dashboard/users" },
-    { label: "Analytics", icon: BarChart3, path: "/dashboard" },
     { label: "Settings", icon: Settings, path: "/dashboard/settings" },
   ],
 };

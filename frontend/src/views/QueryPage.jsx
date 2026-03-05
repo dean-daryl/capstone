@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Send, FileText, ExternalLink, Eye, Loader2, Languages, Sparkles } from 'lucide-react';
 import { queryDocuments, translateText, simplifyText } from '../api/ragService';
+import { createRecentActivity } from '../api/recentActivityService';
+import { useAuth } from '../context/AuthContext';
 
 const QueryPage = () => {
+  const { user } = useAuth();
   const [question, setQuestion] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -27,6 +30,9 @@ const QueryPage = () => {
     try {
       const response = await queryDocuments(question);
       setResult(response.data);
+      if (user?.id && response.data?.answer) {
+        createRecentActivity(user.id, question, response.data.answer);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to query documents. Please try again.');
     } finally {

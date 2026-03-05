@@ -3,8 +3,10 @@ import { getRecentActivity } from '../../api/recentActivityService';
 import { getDateRange } from '../../utils/dateUtils';
 import RecentActivityItem from './RecentActivityItem';
 import { Clock, CalendarDays, CalendarRange, History } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 function RecentActivities() {
+  const { user } = useAuth();
   const [sections, setSections] = useState([
     { title: 'Today', icon: Clock, data: [], dateRange: 'today' },
     { title: 'Yesterday', icon: CalendarDays, data: [], dateRange: 'yesterday' },
@@ -13,12 +15,14 @@ function RecentActivities() {
   ]);
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const fetchActivities = async () => {
       const updatedSections = await Promise.all(
         sections.map(async (section) => {
           const { startDate, endDate } = getDateRange(section.dateRange);
           const activities = await getRecentActivity(
-            '565f4ee2-0729-450c-9bf5-5b382fe82ea6',
+            user.id,
             startDate,
             endDate,
             1,
@@ -31,7 +35,7 @@ function RecentActivities() {
     };
 
     fetchActivities();
-  }, []);
+  }, [user?.id]);
 
   return (
     <div className="space-y-6">

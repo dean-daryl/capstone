@@ -8,7 +8,7 @@ function Dashboard() {
   return (
     <div className='flex h-screen w-full'>
       <SideBar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      <div className={`flex-1 transition-all duration-100 ${isSidebarOpen ? 'ml-[270px]' : 'ml-0'}`}>
+      <div className={`flex-1 transition-all duration-100 ${isSidebarOpen ? 'ml-[300px]' : 'ml-0'}`}>
         <main className='h-full overflow-auto '>
           <Outlet />
         </main>
