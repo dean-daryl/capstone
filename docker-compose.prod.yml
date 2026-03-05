@@ -229,11 +229,7 @@ services:
       - DOMAIN=${DOMAIN}
     # nginx:alpine docker image auto-runs envsubst on /etc/nginx/templates/*.template
     # and outputs to /etc/nginx/conf.d/. We override the main config instead.
-    command: >
-      /bin/sh -c "
-        envsubst '$$DOMAIN' < /etc/nginx/templates/default.conf.template > /etc/nginx/nginx.conf
-        && nginx -g 'daemon off;'
-      "
+    command: ["/bin/sh", "-c", "envsubst '$$DOMAIN' < /etc/nginx/templates/default.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"]
     networks:
       - somatek-network
 
