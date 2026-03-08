@@ -5,6 +5,9 @@ An AI-powered learning platform that simplifies complex technical content (text,
 
 ## Demo Video
 [https://www.loom.com/share/a409c52423df436daca190bf8c2c34ac](https://www.loom.com/share/3dae3b72119a4bc1acd65f30bde01c60)
+
+## Link
+[Link to deployed version](http://89.167.119.247/login)
 ## Tech Stack
 
 | Component | Technology | Language |
