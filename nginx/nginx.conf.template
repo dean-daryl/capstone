@@ -130,7 +130,7 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
-        location /users/ {
+        location /users {
             limit_req zone=api burst=10 nodelay;
             proxy_pass http://backend;
             proxy_set_header Host $host;
