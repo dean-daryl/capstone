@@ -91,7 +91,7 @@ services:
     image: ollama/ollama:latest
     container_name: rag-ollama
     restart: unless-stopped
-    profiles: ["prod"]   # only starts with: docker compose --profile prod up
+    profiles: ["docker-ollama"]   # disabled by default; use --profile docker-ollama if not running Ollama natively
     environment:
       - OLLAMA_ORIGINS=*
       - OLLAMA_NUM_PARALLEL=1
