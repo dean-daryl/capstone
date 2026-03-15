@@ -214,7 +214,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rag_db}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-rag_user}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-changeme}
-      - SPRING_DATA_MONGODB_URI=mongodb://admin:password123@mongodb:27017/somatek?authSource=admin
+      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-password123}@mongodb:27017/somatek?authSource=admin
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
