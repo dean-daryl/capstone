@@ -190,7 +190,7 @@ public class DocumentService implements IDocumentService {
             sources.add(source);
         }
 
-        return new RagQueryResponseDto(answer, sources);
+        return new RagQueryResponseDto(null, answer, sources);
     }
 
     @Override

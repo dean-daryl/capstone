@@ -55,3 +55,8 @@ export const simplifyText = async (text) => {
   const response = await apiClient.post("/simplify", { text });
   return response.data;
 };
+
+export const submitSatisfaction = async (queryId, satisfaction) => {
+  const response = await apiClient.post(`/rag/queries/${queryId}/satisfaction`, { satisfaction });
+  return response.data;
+};

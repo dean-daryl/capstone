@@ -196,14 +196,14 @@ services:
     container_name: rag-java-backend
     restart: unless-stopped
     profiles: ["prod"]   # only starts with: docker compose --profile prod up
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
       mongodb:
         condition: service_healthy
       qdrant:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
       textcat:
         condition: service_started
@@ -220,7 +220,7 @@ services:
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this}
       - TEXTCAT_SERVICE_URL=http://textcat:8000
-      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - NLLB_SERVICE_URL=http://nllb-translate:8000
     ports:
       - "8080:8080"

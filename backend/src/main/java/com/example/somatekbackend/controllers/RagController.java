@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -106,6 +107,19 @@ public class RagController {
         try {
             documentService.reprocessDocument(id);
             return ResponseEntity.ok(new ResponseObjectDto(null, "Document reprocessing started"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ResponseObjectDto(e));
+        }
+    }
+
+    @PostMapping("/queries/{queryId}/satisfaction")
+    public ResponseEntity<ResponseObjectDto> updateSatisfaction(
+            @PathVariable UUID queryId,
+            @RequestBody Map<String, Integer> body) {
+        try {
+            Integer satisfaction = body.get("satisfaction");
+            userQueryService.updateSatisfaction(queryId, satisfaction);
+            return ResponseEntity.ok(new ResponseObjectDto(null, "Feedback submitted"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ResponseObjectDto(e));
         }

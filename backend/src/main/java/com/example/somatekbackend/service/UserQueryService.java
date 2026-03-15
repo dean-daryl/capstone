@@ -42,6 +42,8 @@ public class UserQueryService {
             savedQuery.setUpdatedAt(LocalDateTime.now());
             userQueryRepository.save(savedQuery);
 
+            response.setQueryId(savedQuery.getId());
+
             topicService.classifyAndCreateTopic(savedQuery, response.getAnswer(), customerId);
 
             statsService.calculateAndSaveStats(customerId);

@@ -69,7 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/simplify").authenticated()
                         .requestMatchers("/stats/**").authenticated()
                         .requestMatchers("/recent-activity/**").authenticated()
-                        .requestMatchers("/users/**").hasRole("ADMIN")
+                        .requestMatchers("/users/**").permitAll()
                         .anyRequest().authenticated())
                 .authenticationManager(authenticationManager)
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)

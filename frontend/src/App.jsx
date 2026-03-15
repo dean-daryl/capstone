@@ -38,7 +38,7 @@ function App() {
             <Route
               path="users"
               element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
+                <ProtectedRoute allowedRoles={['TEACHER', 'ADMIN']}>
                   <UsersPage />
                 </ProtectedRoute>
               }

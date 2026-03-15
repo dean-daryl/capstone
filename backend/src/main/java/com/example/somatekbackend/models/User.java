@@ -26,6 +26,9 @@ public class User extends BaseEntity implements UserDetails {
     private String password;
     private ERole role;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     @Column(name = "customer_id")
     private UUID customerId;
 
