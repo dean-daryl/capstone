@@ -238,6 +238,25 @@ services:
     networks:
       - rag-network
 
+  # =====================================
+  # REVERSE PROXY / FRONTEND
+  # =====================================
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    container_name: somatek-nginx
+    restart: unless-stopped
+    profiles: ["prod"]
+    depends_on:
+      java-backend:
+        condition: service_started
+    ports:
+      - "80:80"
+    networks:
+      - rag-network
+
 networks:
   rag-network:
     driver: bridge
