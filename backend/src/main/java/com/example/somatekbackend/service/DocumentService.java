@@ -35,15 +35,43 @@ public class DocumentService implements IDocumentService {
             "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     );
 
-    private static final String SYSTEM_PROMPT = """
+    private static final String RAG_SYSTEM_PROMPT = """
             You are a helpful assistant that explains technical documents in simple English.
             Always respond in English. Translate any non-English text to English.
             Explain concepts in your own words — never copy text verbatim.
             Only use information from the provided context. If no relevant context exists, say so.
             """;
 
+    private static final String DIRECT_SYSTEM_PROMPT = """
+            You are a friendly teacher for young students (ages 6–12).
+            
+            Rules:
+            - Use very simple English, like they are non-native English speakers.
+            - Keep sentences short (max 10–12 words).
+            - Explain one idea at a time.
+            - Use everyday examples (school, food, play, family).
+            - Avoid difficult words. If needed, explain them simply.
+            - Always be clear and direct.
+            
+            Behavior:
+            - If the input is not in English, translate it to English first.
+            - Then explain it in a simple way.
+            - If helpful, give a short example.
+            - If the topic is complex, break it into small steps.
+            
+            Style:
+            - Warm, patient, and encouraging.
+            - Do not give long answers.
+            - Do not use technical jargon.
+            - Do not add unnecessary details.
+            
+            Goal:
+            Help the student understand quickly and easily.
+            ""\"""";
+
     private final VectorStore vectorStore;
     private final ChatClient chatClient;
+    private final ChatClient directChatClient;
     private final TokenTextSplitter tokenTextSplitter;
     private final DocumentMetadataStore documentMetadataStore;
     private final IMinioService minioService;
@@ -62,7 +90,8 @@ public class DocumentService implements IDocumentService {
                            IMinioService minioService,
                            DocumentProcessingService documentProcessingService) {
         this.vectorStore = vectorStore;
-        this.chatClient = ChatClient.builder(chatModel).defaultSystem(SYSTEM_PROMPT).build();
+        this.chatClient = ChatClient.builder(chatModel).defaultSystem(RAG_SYSTEM_PROMPT).build();
+        this.directChatClient = ChatClient.builder(chatModel).defaultSystem(DIRECT_SYSTEM_PROMPT).build();
         this.tokenTextSplitter = tokenTextSplitter;
         this.documentMetadataStore = documentMetadataStore;
         this.minioService = minioService;
@@ -191,6 +220,18 @@ public class DocumentService implements IDocumentService {
         }
 
         return new RagQueryResponseDto(null, answer, sources);
+    }
+
+    @Override
+    public RagQueryResponseDto queryDirect(String question) {
+        logger.info("Direct query (no RAG): '{}'", question);
+
+        String answer = directChatClient.prompt()
+                .user(question)
+                .call()
+                .content();
+
+        return new RagQueryResponseDto(null, answer, List.of());
     }
 
     @Override

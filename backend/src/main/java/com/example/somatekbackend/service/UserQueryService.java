@@ -24,7 +24,7 @@ public class UserQueryService {
     public RagQueryResponseDto query(String question, String type, String source, UUID customerId) {
         UserQuery userQuery = new UserQuery();
         userQuery.setText(question);
-        userQuery.setType(type != null ? type : "rag");
+        userQuery.setType(type != null ? type : "direct");
         userQuery.setSource(source != null ? source : "web");
         userQuery.setCustomerId(customerId);
         userQuery.setCreatedAt(LocalDateTime.now());
@@ -33,9 +33,14 @@ public class UserQueryService {
         UserQuery savedQuery = userQueryRepository.save(userQuery);
 
         try {
-            RagQueryRequestDto request = new RagQueryRequestDto();
-            request.setQuestion(question);
-            RagQueryResponseDto response = documentService.queryDocuments(request);
+            RagQueryResponseDto response;
+            if ("rag".equals(type)) {
+                RagQueryRequestDto request = new RagQueryRequestDto();
+                request.setQuestion(question);
+                response = documentService.queryDocuments(request);
+            } else {
+                response = documentService.queryDirect(question);
+            }
 
             savedQuery.setResponse(response.getAnswer());
             savedQuery.setSourcesUsed(String.valueOf(response.getSources().size()));

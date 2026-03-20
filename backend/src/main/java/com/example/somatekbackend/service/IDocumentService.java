@@ -13,6 +13,8 @@ public interface IDocumentService {
 
     RagQueryResponseDto queryDocuments(RagQueryRequestDto request);
 
+    RagQueryResponseDto queryDirect(String question);
+
     List<RagDocument> getAllDocuments();
 
     RagDocument getDocumentById(String id);

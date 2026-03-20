@@ -31,6 +31,7 @@ import {
   IconThumbDownFilled,
   IconCopy,
   IconCheck,
+  IconBook,
 } from '@tabler/icons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -57,6 +58,7 @@ const QueryPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [useRag, setUseRag] = useState(false);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -93,7 +95,7 @@ const QueryPage = () => {
     const entryIndex = conversations.length;
 
     try {
-      const response = await queryDocuments(currentQuestion);
+      const response = await queryDocuments(currentQuestion, useRag ? 'rag' : 'direct');
       setConversations((prev) => {
         const updated = [...prev];
         updated[entryIndex] = { ...updated[entryIndex], result: response.data };
@@ -410,6 +412,16 @@ const QueryPage = () => {
                 input: { paddingRight: 50 },
               }}
             />
+            <Tooltip label={useRag ? 'Searching documents' : 'Search documents'} withArrow>
+              <ActionIcon
+                variant={useRag ? 'filled' : 'light'}
+                color="indigo"
+                size="lg"
+                onClick={() => setUseRag((v) => !v)}
+              >
+                <IconBook size={18} />
+              </ActionIcon>
+            </Tooltip>
             <Button
               type="submit"
               size="md"
@@ -422,6 +434,7 @@ const QueryPage = () => {
           </Group>
           <Text size="xs" c="dimmed" mt={4} ta="center">
             Press Enter to send, Shift+Enter for a new line
+            {useRag && ' · Searching uploaded documents'}
           </Text>
         </Box>
       </Stack>

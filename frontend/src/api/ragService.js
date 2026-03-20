@@ -1,7 +1,7 @@
 import apiClient from "./apiClient";
 
-export const queryDocuments = async (question) => {
-  const response = await apiClient.post("/rag/query", { question });
+export const queryDocuments = async (question, type = "direct") => {
+  const response = await apiClient.post("/rag/query", { question, type });
   return response.data;
 };
 
