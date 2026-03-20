@@ -120,8 +120,16 @@ class GlossaryProtector:
         return protected, placeholder_map, detected_subject
 
     def restore(self, text: str, placeholder_map: dict[str, str]) -> str:
+        # First pass: exact match replacement
         for placeholder, original in placeholder_map.items():
             text = text.replace(placeholder, original)
+
+        # Second pass: catch mangled placeholders that NLLB may have corrupted
+        # (e.g. XGLOSS10X → XGLOSS10, XGLOSX15, XGLOSS 10X, etc.)
+        mangled_pattern = re.compile(r"XGLOS[SX]?\s*\d+\s*X?")
+        text = mangled_pattern.sub("", text)
+        # Clean up leftover double spaces
+        text = re.sub(r" {2,}", " ", text).strip()
         return text
 
     def get_glossary_info(self) -> dict:
